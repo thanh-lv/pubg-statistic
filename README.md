@@ -14,11 +14,11 @@ Website xem nhanh thống kê PUBG của bạn và bạn bè mà không cần m�
 
 ## Công nghệ
 
-| Phần      | Công nghệ                                                         |
-| --------- | ----------------------------------------------------------------- |
-| Frontend  | React 19, React Router, TanStack Query, Tailwind CSS v4, Lucide   |
+| Phần     | Công nghệ                                                                 |
+| --------- | --------------------------------------------------------------------------- |
+| Frontend  | React 19, React Router, TanStack Query, Tailwind CSS v4, Lucide             |
 | Backend   | Cloudflare Worker (`worker/`), proxy tới PUBG API, giữ API key bí mật |
-| Build/Dev | Vite + `@cloudflare/vite-plugin` (1 lệnh `npm run dev` chạy cả 2) |
+| Build/Dev | Vite + `@cloudflare/vite-plugin` (1 lệnh `npm run dev` chạy cả 2)    |
 
 ## Cấu trúc thư mục
 
@@ -43,7 +43,7 @@ Website xem nhanh thống kê PUBG của bạn và bạn bè mà không cần m�
 
 ### 1. Lấy PUBG API key
 
-Đăng ký miễn phí tại <https://developer.pubg.com>, tạo app và copy API key.
+Đăng ký miễn phí tại [https://developer.pubg.com](https://developer.pubg.com), tạo app và copy API key.
 
 ### 2. Chạy local
 
@@ -89,25 +89,25 @@ Copy `id` vào `wrangler.jsonc` (bỏ comment dòng `kv_namespaces`) rồi `npm 
 
 ## API của Worker
 
-| Endpoint                                              | Mô tả                           | Cache  |
-| ----------------------------------------------------- | ------------------------------- | ------ |
-| `GET /api/players?names=a,b`                          | Tra người chơi theo tên (≤30)   | 5 phút |
-| `GET /api/seasons`                                    | Danh sách mùa                   | 12 giờ |
-| `GET /api/squad-stats?ids=…&season=…&mode=squad`      | Stats cả đội 1 chế độ (batch)   | 10 phút |
-| `GET /api/player/:id/season/:season`                  | Stats 1 người, mọi chế độ       | 10 phút |
-| `GET /api/player/:id/ranked/:season`                  | Stats rank                      | 10 phút |
-| `GET /api/matches/:id`                                | Chi tiết trận (đã rút gọn)      | 30 ngày |
+| Endpoint                                             | Mô tả                             | Cache    |
+| ---------------------------------------------------- | ----------------------------------- | -------- |
+| `GET /api/players?names=a,b`                       | Tra người chơi theo tên (≤30)  | 5 phút  |
+| `GET /api/seasons`                                 | Danh sách mùa                     | 12 giờ  |
+| `GET /api/squad-stats?ids=…&season=…&mode=squad` | Stats cả đội 1 chế độ (batch) | 10 phút |
+| `GET /api/player/:id/season/:season`               | Stats 1 người, mọi chế độ     | 10 phút |
+| `GET /api/player/:id/ranked/:season`               | Stats rank                          | 10 phút |
+| `GET /api/matches/:id`                             | Chi tiết trận (đã rút gọn)    | 30 ngày |
 
 Tất cả đều nhận `?shard=steam|kakao|psn|xbox|console`. `season` là id mùa hoặc `lifetime`. Khi PUBG API trả lỗi 429/5xx, Worker trả lại dữ liệu cache cũ (`meta.stale: true`) thay vì báo lỗi.
 
 ## Scripts
 
-| Lệnh               | Việc                                   |
-| ------------------ | -------------------------------------- |
-| `npm run dev`      | Dev server (frontend + worker)         |
-| `npm run build`    | Typecheck + build                      |
-| `npm run preview`  | Build rồi chạy thử bản production      |
-| `npm run deploy`   | Build + deploy lên Cloudflare          |
+| Lệnh               | Việc                                 |
+| ------------------- | ------------------------------------- |
+| `npm run dev`     | Dev server (frontend + worker)        |
+| `npm run build`   | Typecheck + build                     |
+| `npm run preview` | Build rồi chạy thử bản production |
+| `npm run deploy`  | Build + deploy lên Cloudflare        |
 
 ---
 

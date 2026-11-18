@@ -21,11 +21,13 @@ export const SQUAD_CONFIG: {
   shard: "steam",
   defaultMode: "squad",
   players: [
-    // "thanhlv2911",
-    // "thangq0",
-    // "vudzhihi",
+    "thanhlv2911",
+    "thangq0",
+    "vudzhihi",
   ],
   helmets: {
-    // "thanhlv2911": "lv3",
+    "thanhlv2911": "lv3",
+    "thangq0": "lv3",
+    "vudzhihi": "lv3",
   },
 };
