@@ -9,7 +9,7 @@ export function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-white/[0.05] py-6 text-center text-xs text-fg-subtle">
-        Dữ liệu từ PUBG Developer API · Trang không liên kết với KRAFTON
+        Dữ liệu & hình ảnh vật phẩm từ PUBG Developer API · Trang không liên kết với KRAFTON
       </footer>
     </div>
   );

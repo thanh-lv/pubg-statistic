@@ -54,7 +54,7 @@ export function PlayerPage() {
       <section className="card relative overflow-hidden p-5 sm:p-6">
         <div className="pointer-events-none absolute -top-24 -left-24 size-72 rounded-full bg-accent/10 blur-3xl" />
         <div className="relative flex flex-col gap-5 md:flex-row md:items-center">
-          <Avatar name={player.name} size="xl" />
+          <Avatar name={player.name} size="xl" editable />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold tracking-[0.2em] text-accent uppercase">
               {player.shard} {seasonLabel && `· ${seasonLabel}`}

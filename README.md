@@ -10,6 +10,7 @@ Website xem nhanh thống kê PUBG của bạn và bạn bè mà không cần m�
 - **Giải thích chỉ số**: tooltip có hình minh hoạ + công thức + ví dụ cho từng chỉ số
 - Chọn mùa / toàn thời gian, Squad/Duo/Solo, TPP/FPP; tìm bất kỳ người chơi nào
 - Chia sẻ đội hình bằng link `?p=Ten1,Ten2,…`
+- Avatar là mũ bảo hiểm PUBG (Lv1/Lv2/Lv3). Bấm vào avatar để đổi mũ, hoặc cố định trong `squad.ts` → `helmets`
 
 ## Công nghệ
 
@@ -34,7 +35,7 @@ Website xem nhanh thống kê PUBG của bạn và bạn bè mà không cần m�
 │   ├── hooks/           # data hooks (React Query), state đội hình
 │   ├── lib/             # api client, format số, công thức chỉ số, glossary
 │   └── styles/index.css # theme Tailwind (màu, font, component class)
-├── public/              # favicon & static
+├── public/              # favicon, avatars/helmets/ (ảnh mũ từ pubg/api-assets)
 └── wrangler.jsonc       # cấu hình Cloudflare
 ```
 
@@ -110,4 +111,4 @@ Tất cả đều nhận `?shard=steam|kakao|psn|xbox|console`. `season` là id 
 
 ---
 
-Dữ liệu từ PUBG Developer API. Dự án cá nhân, không liên kết với KRAFTON.
+Dữ liệu từ PUBG Developer API. Ảnh mũ bảo hiểm lấy từ [pubg/api-assets](https://github.com/pubg/api-assets) — tài nguyên chính thức dành cho developer, sử dụng theo [PUBG API Terms of Use](https://developer.pubg.com/tos). Dự án cá nhân, không liên kết với KRAFTON.

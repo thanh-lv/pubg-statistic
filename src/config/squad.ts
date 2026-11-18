@@ -1,4 +1,5 @@
 import type { GameMode, Shard } from "@shared/types";
+import type { HelmetId } from "@/lib/helmets";
 
 /**
  * ⚙️ CẤU HÌNH ĐỘI HÌNH MẶC ĐỊNH
@@ -13,6 +14,8 @@ export const SQUAD_CONFIG: {
   shard: Shard;
   defaultMode: GameMode;
   players: string[];
+  /** (Tuỳ chọn) Cố định mũ cho từng người: "lv1-a" | "lv1-b" | "lv2-a" | "lv2-b" | "lv3" */
+  helmets?: Record<string, HelmetId>;
 } = {
   title: "Squad Stats",
   shard: "steam",
@@ -22,4 +25,7 @@ export const SQUAD_CONFIG: {
     // "thangq0",
     // "vudzhihi",
   ],
+  helmets: {
+    // "thanhlv2911": "lv3",
+  },
 };

@@ -2,6 +2,7 @@ import type { GameMode, Shard } from "@shared/types";
 import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { SQUAD_CONFIG } from "@/config/squad";
+import { defaultHelmet, isHelmetId, type HelmetId } from "@/lib/helmets";
 import { parseNames } from "@/lib/utils";
 import { usePersistentState } from "./usePersistentState";
 
@@ -25,6 +26,8 @@ interface SquadContextValue {
   shareUrl: string;
   manageOpen: boolean;
   setManageOpen: (open: boolean) => void;
+  helmetOf: (name: string) => HelmetId;
+  setHelmet: (name: string, id: HelmetId) => void;
 }
 
 const SquadContext = createContext<SquadContextValue | null>(null);
@@ -36,6 +39,22 @@ export function SquadProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = usePersistentState<GameMode>("squad.mode", SQUAD_CONFIG.defaultMode);
   const [season, setSeason] = usePersistentState<string>("squad.season", "current");
   const [manageOpen, setManageOpen] = useState(false);
+  const [helmets, setHelmets] = usePersistentState<Record<string, HelmetId>>("squad.helmets", {});
+
+  const helmetOf = useCallback(
+    (name: string) => {
+      const key = name.toLowerCase();
+      const own = helmets[key];
+      if (isHelmetId(own)) return own;
+      const cfg = Object.entries(SQUAD_CONFIG.helmets ?? {}).find(([n]) => n.toLowerCase() === key)?.[1];
+      return isHelmetId(cfg) ? cfg : defaultHelmet(name);
+    },
+    [helmets],
+  );
+  const setHelmet = useCallback(
+    (name: string, id: HelmetId) => setHelmets((prev) => ({ ...prev, [name.toLowerCase()]: id })),
+    [setHelmets],
+  );
 
   const shared = useMemo(() => parseNames(params.get("p") ?? ""), [params]);
   const isShared = shared.length > 0;
@@ -100,6 +119,8 @@ export function SquadProvider({ children }: { children: ReactNode }) {
     shareUrl,
     manageOpen,
     setManageOpen,
+    helmetOf,
+    setHelmet,
   };
   return <SquadContext value={value}>{children}</SquadContext>;
 }

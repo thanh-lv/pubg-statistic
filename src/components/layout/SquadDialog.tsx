@@ -80,6 +80,7 @@ export function SquadDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div>
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="font-medium">Thành viên ({myPlayers.length})</span>
+            {myPlayers.length > 0 && <span className="text-xs text-fg-subtle">Bấm vào mũ để đổi</span>}
           </div>
           {myPlayers.length === 0 ? (
             <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-fg-subtle">
@@ -89,7 +90,7 @@ export function SquadDialog({ open, onClose }: { open: boolean; onClose: () => v
             <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
               {myPlayers.map((n, i) => (
                 <li key={n} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2">
-                  <Avatar name={n} size="sm" />
+                  <Avatar name={n} size="md" editable showLevel={false} />
                   <span className="flex-1 truncate font-medium">{n}</span>
                   <div className="flex items-center gap-1 text-fg-subtle">
                     <button className="rounded-lg p-1.5 hover:bg-white/10 hover:text-fg disabled:opacity-30" disabled={i === 0} onClick={() => move(n, -1)} aria-label="Lên">
