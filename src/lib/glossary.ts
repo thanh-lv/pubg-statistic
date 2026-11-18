@@ -121,6 +121,24 @@ export const GLOSSARY = {
     desc: "Tỉ lệ kill theo từng nhóm súng: AR (súng trường), DMR (bắn tỉa bán tự động), Sniper (bắn tỉa từng phát), SMG (tiểu liên), Shotgun, LMG (súng máy)… Cho thấy ai thích đánh gần, ai thích bắn xa.",
     formula: "Kill bằng nhóm súng ÷ tổng kill bằng súng",
   },
+  together: {
+    title: "Chơi chung",
+    desc: "Gộp lịch sử ~14 ngày gần nhất của mọi người trong đội hình (giới hạn PUBG lưu). Chỉ tính trận thường & rank battle royale, bỏ custom/arcade. Hai người cùng teamId trong một trận = chơi chung.",
+  },
+  lineup: {
+    title: "Đội hình",
+    desc: "Tổ hợp người quen cùng đội trong một trận. Chỗ trống còn lại là người lạ ghép ngẫu nhiên (random).",
+    example: "A + B: 12 trận · hạng TB #8 · top 10 58%",
+  },
+  hotDrop: {
+    title: "Nhảy đông",
+    desc: "Số người chơi thật (không tính bot, không tính đồng đội) tiếp đất trong bán kính 300 m quanh bạn. Càng cao = càng hay nhảy chỗ \"hot\", đánh nhau ngay đầu trận.",
+  },
+  earlyDeath: {
+    title: "Chết sớm",
+    desc: "Tỉ lệ trận bị hạ trong vòng 3 phút sau khi tiếp đất.",
+    formula: "Số trận chết ≤ 3 phút sau khi đáp ÷ số trận đã đáp",
+  },
   place: { title: "Thứ hạng trận", desc: "#1 là thắng. Số sau dấu / là tổng số đội trong trận." },
 } satisfies Record<string, Term>;
 
@@ -132,5 +150,6 @@ export const GLOSSARY_GROUPS: { title: string; keys: TermKey[] }[] = [
   { title: "Chiến đấu", keys: ["humanBot", "dBNOs", "assists", "longestKill", "roundMostKills", "maxKillStreaks"] },
   { title: "Sinh tồn & đồng đội", keys: ["avgSurvival", "revives", "heals", "boosts"] },
   { title: "Vũ khí", keys: ["weaponMastery", "weaponLevel", "weaponKnocks", "weaponLongest", "weaponStyle"] },
+  { title: "Chơi chung & nhảy dù", keys: ["together", "lineup", "hotDrop", "earlyDeath"] },
   { title: "Rank & chế độ", keys: ["rp", "tier", "avgRank", "tppFpp", "place"] },
 ];

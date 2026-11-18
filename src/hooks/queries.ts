@@ -1,4 +1,4 @@
-import type { GameMode } from "@shared/types";
+import type { GameMode, MatchBrief, PlayerSummary } from "@shared/types";
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useSquad } from "./useSquad";
@@ -95,5 +95,40 @@ export function useSquadWeapons(ids: string[]) {
       queryFn: () => api.weapons(id, shard),
       staleTime: 30 * MIN,
     })),
+  });
+}
+
+type BriefResult = { data?: { data: MatchBrief }; isPending: boolean; isError: boolean };
+
+/** Gộp kết quả (hàm cố định → TanStack giữ nguyên tham chiếu khi dữ liệu không đổi) */
+function combineBriefs(results: BriefResult[]) {
+  const briefs = results.flatMap((q) => (q.data ? [q.data.data] : []));
+  const done = results.filter((q) => !q.isPending).length;
+  return {
+    briefs,
+    total: results.length,
+    done,
+    failed: results.filter((q) => q.isError).length,
+    loading: done < results.length,
+  };
+}
+
+/**
+ * Lịch sử trận gần đây (~14 ngày) của cả đội: gộp matchIds của mọi người, mỗi trận lấy 1 bản rút gọn.
+ * Endpoint trận của PUBG không bị giới hạn tần suất, trình duyệt cache 7 ngày.
+ */
+export function useSquadHistory(players: PlayerSummary[]) {
+  const { shard } = useSquad();
+  const ids = [...new Set(players.map((p) => p.id))].sort();
+  const matchIds = [...new Set(players.flatMap((p) => p.matchIds))];
+  return useQueries({
+    queries: matchIds.map((id) => ({
+      queryKey: ["match-brief", shard, id, ids.join(",")],
+      queryFn: () => api.matchBrief(id, ids, shard),
+      staleTime: Infinity,
+      gcTime: 60 * MIN,
+      enabled: ids.length > 0,
+    })),
+    combine: combineBriefs,
   });
 }

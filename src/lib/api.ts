@@ -2,6 +2,7 @@ import type {
   ApiErrorBody,
   ApiResponse,
   GameMode,
+  MatchBrief,
   MatchSummary,
   PlayerRanked,
   PlayerSeasonStats,
@@ -48,6 +49,8 @@ export const api = {
   playerRanked: (id: string, season: string, shard: string) =>
     get<PlayerRanked>(`/api/player/${id}/ranked/${encodeURIComponent(season)}`, { shard }),
   weapons: (id: string, shard: string) => get<PlayerWeapons>(`/api/player/${id}/weapons`, { shard, v: "2" }),
+  matchBrief: (id: string, ids: string[], shard: string) =>
+    get<MatchBrief>(`/api/match-brief/${id}`, { ids: ids.join(","), shard, v: "1" }),
   // `v`: tăng khi đổi dạng dữ liệu trận (trình duyệt cache 7 ngày)
   match: (id: string, shard: string) => get<MatchSummary>(`/api/matches/${id}`, { shard, v: "2" }),
 };

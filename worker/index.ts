@@ -1,4 +1,12 @@
-import { GAME_MODES, SHARDS, type ApiErrorBody, type ApiResponse, type GameMode, type Shard } from "../shared/types";
+import {
+  GAME_MODES,
+  SHARDS,
+  type ApiErrorBody,
+  type ApiResponse,
+  type GameMode,
+  type MatchBrief,
+  type Shard,
+} from "../shared/types";
 import { cached, type CachedResult } from "./cache";
 import type { Ctx, Env } from "./env";
 import { HttpError } from "./errors";
@@ -144,6 +152,48 @@ const routes: [RegExp, Handler][] = [
       check(id, RE_ACCOUNT, "Player id");
       const key = `weapons:v2:${shard}:${id}`;
       return json(await cached(ctx, key, TTL.weapons, () => loadWeaponMastery(ctx.env, shard, id)), 600);
+    },
+  ],
+
+  // GET /api/match-brief/:id?ids=account.x,account.y
+  // Dùng chung cache với /api/matches/:id, chỉ trả về dòng của những người được hỏi (~1 KB thay vì ~40 KB)
+  [
+    /^\/api\/match-brief\/([^/]+)$/,
+    async (ctx, url, [id]) => {
+      const shard = getShard(url, ctx.env);
+      check(id, RE_MATCH, "Match id");
+      const ids = new Set(list(url, "ids", RE_ACCOUNT, "Player id"));
+      const result = await cached(ctx, `match:v2:${shard}:${id}`, TTL.match, () => loadMatch(ctx.env, shard, id), {
+        kv: false,
+      });
+      const m = result.data;
+      const brief: MatchBrief = {
+        id: m.id,
+        createdAt: m.createdAt,
+        duration: m.duration,
+        mapName: m.mapName,
+        gameMode: m.gameMode,
+        matchType: m.matchType,
+        isCustomMatch: m.isCustomMatch,
+        teamCount: m.teamCount,
+        telemetryUrl: m.telemetryUrl,
+        players: m.participants
+          .filter((p) => ids.has(p.playerId))
+          .map((p) => ({
+            playerId: p.playerId,
+            name: p.name,
+            teamId: p.teamId,
+            kills: p.kills,
+            assists: p.assists,
+            dBNOs: p.dBNOs,
+            damageDealt: p.damageDealt,
+            headshotKills: p.headshotKills,
+            revives: p.revives,
+            timeSurvived: p.timeSurvived,
+            winPlace: p.winPlace,
+          })),
+      };
+      return json({ ...result, data: brief }, 7 * 24 * 3600);
     },
   ],
 

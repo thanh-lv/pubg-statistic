@@ -6,7 +6,10 @@ Website xem nhanh thống kê PUBG của bạn và bạn bè mà không cần m�
 
 - **Đội hình**: bảng xếp hạng (K/D, ADR, Win%, Top10%, HS%…), danh hiệu (Sát thủ, Vua gà, Máy dame…), biểu đồ so sánh
 - **Người chơi**: rank (tier, RP, KDA), thống kê theo từng chế độ, phong độ ~14 ngày gần nhất, lịch sử trận
-- **Trận đấu**: thông tin đồng đội, top sát thủ, top 10 đội
+- **Vũ khí** (Weapon Mastery): súng tủ, phong cách, so sánh kill/knock/sát thương theo từng súng
+- **Chơi chung** (lịch sử ~14 ngày): đội hình nào mạnh nhất, đi cùng đội vs đi lẻ, theo bản đồ, theo khung giờ, phong độ gần đây
+- **Điểm nhảy dù**: tải telemetry N trận gần nhất (trong trình duyệt, ~2 MB/trận) → hay nhảy đâu, nhảy đông hay vắng, tỉ lệ chết sớm; kết quả lưu trong trình duyệt
+- **Trận đấu**: thông tin đồng đội, top sát thủ, top 10 đội, người/bot, bản đồ 2D phát lại trận
 - **Giải thích chỉ số**: tooltip có hình minh hoạ + công thức + ví dụ cho từng chỉ số
 - Chọn mùa / toàn thời gian, Squad/Duo/Solo, TPP/FPP; tìm bất kỳ người chơi nào
 - Chia sẻ đội hình bằng link `?p=Ten1,Ten2,…`
@@ -102,6 +105,7 @@ Copy `id` vào `wrangler.jsonc` (bỏ comment dòng `kv_namespaces`) rồi `npm 
 | `GET /api/player/:id/ranked/:season`               | Stats rank                          | 10 phút |
 | `GET /api/player/:id/weapons`                      | Weapon Mastery (thống kê theo súng)           | 1 giờ   |
 | `GET /api/matches/:id`                             | Chi tiết trận (đã rút gọn)    | 30 ngày |
+| `GET /api/match-brief/:id?ids=…`                   | Trận rút gọn, chỉ dòng của `ids`        | 30 ngày |
 
 Tất cả đều nhận `?shard=steam|kakao|psn|xbox|console`. `season` là id mùa hoặc `lifetime`. Khi PUBG API trả lỗi 429/5xx, Worker trả lại dữ liệu cache cũ (`meta.stale: true`) thay vì báo lỗi.
 

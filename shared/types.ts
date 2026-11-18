@@ -213,3 +213,35 @@ export interface PlayerWeapons {
   /** Sắp xếp theo kill giảm dần */
   weapons: WeaponStat[];
 }
+
+/* --------------------------- Match brief ---------------------------- */
+
+/** Một người trong đội hình theo dõi xuất hiện trong trận */
+export interface BriefPlayer {
+  playerId: string;
+  name: string;
+  teamId: number | null;
+  kills: number;
+  assists: number;
+  dBNOs: number;
+  damageDealt: number;
+  headshotKills: number;
+  revives: number;
+  timeSurvived: number;
+  /** Hạng của đội */
+  winPlace: number;
+}
+
+/** Bản rút gọn của trận: chỉ giữ dòng của những người được hỏi (dùng thống kê nhiều trận) */
+export interface MatchBrief {
+  id: string;
+  createdAt: string;
+  duration: number;
+  mapName: string;
+  gameMode: string;
+  matchType: string;
+  isCustomMatch: boolean;
+  teamCount: number;
+  telemetryUrl: string | null;
+  players: BriefPlayer[];
+}

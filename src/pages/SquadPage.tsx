@@ -3,7 +3,9 @@ import { useMemo, useState } from "react";
 import { Filters } from "@/components/layout/Filters";
 import { Awards } from "@/components/squad/Awards";
 import { CompareBars } from "@/components/squad/CompareBars";
+import { LandingSpots } from "@/components/squad/LandingSpots";
 import { Leaderboard } from "@/components/squad/Leaderboard";
+import { TogetherStats } from "@/components/squad/TogetherStats";
 import { WeaponCompare } from "@/components/squad/WeaponCompare";
 import type { SquadRow } from "@/components/squad/types";
 import { Glossary } from "@/components/ui/Glossary";
@@ -97,6 +99,8 @@ export function SquadPage() {
             <Leaderboard rows={rows} />
             <CompareBars rows={rows} />
           </div>
+          <TogetherStats rows={rows} players={found} />
+          <LandingSpots rows={rows} players={found} />
           <WeaponCompare rows={rows} />
           <Glossary />
         </>
