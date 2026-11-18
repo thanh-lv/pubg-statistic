@@ -38,7 +38,8 @@ async function get<T>(path: string, params: Record<string, string | undefined> =
 
 export const api = {
   players: (names: string[], shard: string) => get<PlayersResult>("/api/players", { names: names.join(","), shard }),
-  seasons: (shard: string) => get<Season[]>("/api/seasons", { shard }),
+  // `v`: tăng khi đổi cách xử lý danh sách mùa để trình duyệt bỏ cache cũ
+  seasons: (shard: string) => get<Season[]>("/api/seasons", { shard, v: "2" }),
   squadStats: (ids: string[], season: string, mode: GameMode, shard: string) =>
     get<SquadStats>("/api/squad-stats", { ids: ids.join(","), season, mode, shard }),
   playerSeason: (id: string, season: string, shard: string) =>

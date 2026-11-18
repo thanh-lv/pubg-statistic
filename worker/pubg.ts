@@ -110,21 +110,37 @@ export async function loadPlayers(env: Env, shard: string, names: string[]): Pro
 
 /* ------------------------------ Seasons ------------------------------ */
 
+const SEASON_RE = /^(.*(?:pc-2018|console))-(\d+)$/;
+
+/**
+ * PUBG trả về nhiều "họ" id cho cùng một số mùa (vd. `...pc-2018-44` và `...console-44`).
+ * Chỉ một trong số đó có dữ liệu cho nền tảng đang xem, nên mỗi số mùa chỉ giữ 1 id:
+ *   1. id đang là mùa hiện tại (chắc chắn đúng)
+ *   2. id cùng họ với mùa hiện tại
+ *   3. id theo nền tảng: pc-2018 cho steam/kakao, console cho psn/xbox/console
+ */
 export async function loadSeasons(env: Env, shard: string): Promise<Season[]> {
   const doc = await pubgFetch<JsonApiDoc<JsonApiResource<any>[]>>(env, `/shards/${shard}/seasons`);
-  const seasons: Season[] = [];
-  for (const s of doc.data) {
-    const m = /(?:pc-2018|console)-(\d+)$/.exec(s.id);
-    if (!m) continue;
-    const number = Number(m[1]);
-    seasons.push({
-      id: s.id,
-      number,
-      label: `Season ${number}`,
-      isCurrent: !!s.attributes.isCurrentSeason,
-    });
+
+  const parsed = doc.data.flatMap((s) => {
+    const m = SEASON_RE.exec(s.id);
+    return m ? [{ id: s.id, family: m[1], number: Number(m[2]), isCurrent: !!s.attributes.isCurrentSeason }] : [];
+  });
+
+  const currentFamily = parsed.find((s) => s.isCurrent)?.family;
+  const platformFamily = shard === "steam" || shard === "kakao" ? "pc-2018" : "console";
+  const score = (s: (typeof parsed)[number]) =>
+    (s.isCurrent ? 4 : 0) + (s.family === currentFamily ? 2 : 0) + (s.family.endsWith(platformFamily) ? 1 : 0);
+
+  const best = new Map<number, (typeof parsed)[number]>();
+  for (const s of parsed) {
+    const prev = best.get(s.number);
+    if (!prev || score(s) > score(prev)) best.set(s.number, s);
   }
-  return seasons.sort((a, b) => b.number - a.number);
+
+  return [...best.values()]
+    .map(({ id, number, isCurrent }) => ({ id, number, isCurrent, label: `Season ${number}` }))
+    .sort((a, b) => b.number - a.number);
 }
 
 /* ------------------------------- Stats ------------------------------- */

@@ -1,33 +1,68 @@
 import { Info } from "lucide-react";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { GLOSSARY, type TermKey } from "@/lib/glossary";
 import { cn } from "@/lib/utils";
 import { TermArt, hasArt } from "./TermArt";
 
 const WIDTH = 256;
-const GAP = 8;
+/** Khoảng cách từ con trỏ tới tooltip */
+const OFFSET_X = 16;
+const OFFSET_Y = 10;
+const EDGE = 8;
+
+type Anchor = { x: number; y: number };
 
 /**
- * Tooltip hiện khi rê chuột (desktop) hoặc chạm (mobile).
+ * Tooltip hiện khi rê chuột (desktop) hoặc chạm/focus (mobile, bàn phím).
+ * - Rê chuột: nằm bên phải con trỏ và đi theo chuột; sát mép phải thì lật sang trái.
+ * - Chạm/focus: nằm bên phải phần tử.
  * Render qua portal + position: fixed nên không bị cắt bởi vùng cuộn của bảng.
  */
 export function Tip({ term, children, className }: { term: TermKey; children: ReactNode; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number; above: boolean } | null>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const [place, setPlace] = useState<{ left: number; top: number } | null>(null);
   const id = useId();
 
-  const show = useCallback(() => {
-    const r = ref.current?.getBoundingClientRect();
-    if (!r) return;
-    const left = Math.min(Math.max(8, r.left + r.width / 2 - WIDTH / 2), window.innerWidth - WIDTH - 8);
-    const above = r.top > 300;
-    setPos({ left, top: above ? r.top - GAP : r.bottom + GAP, above });
+  const showAtPointer = useCallback((e: ReactPointerEvent) => {
+    if (e.pointerType === "mouse") setAnchor({ x: e.clientX, y: e.clientY });
   }, []);
-  const hide = useCallback(() => setPos(null), []);
+  const showAtElement = useCallback(() => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setAnchor({ x: r.right - OFFSET_X + 4, y: r.top + r.height / 2 - OFFSET_Y });
+  }, []);
+  const hide = useCallback(() => {
+    setAnchor(null);
+    setPlace(null);
+  }, []);
+
+  // Đo kích thước tooltip rồi đặt bên phải con trỏ, giữ trong khung nhìn
+  useLayoutEffect(() => {
+    const el = tipRef.current;
+    if (!anchor || !el) return;
+    const { offsetWidth: w, offsetHeight: h } = el;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = anchor.x + OFFSET_X;
+    if (left + w > vw - EDGE) left = anchor.x - OFFSET_X - w; // lật sang trái
+    left = Math.max(EDGE, Math.min(left, vw - w - EDGE));
+    const top = Math.max(EDGE, Math.min(anchor.y + OFFSET_Y, vh - h - EDGE));
+    setPlace((p) => (p && p.left === left && p.top === top ? p : { left, top }));
+  }, [anchor]);
 
   useEffect(() => {
-    if (!pos) return;
+    if (!anchor) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && hide();
     const onDown = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && hide();
     window.addEventListener("scroll", hide, true);
@@ -40,31 +75,32 @@ export function Tip({ term, children, className }: { term: TermKey; children: Re
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("pointerdown", onDown);
     };
-  }, [pos, hide]);
+  }, [anchor, hide]);
 
   const t = GLOSSARY[term];
   return (
     <span
       ref={ref}
       className={cn("inline-flex", className)}
-      onPointerEnter={(e) => e.pointerType === "mouse" && show()}
+      onPointerEnter={showAtPointer}
+      onPointerMove={showAtPointer}
       onPointerLeave={(e) => e.pointerType === "mouse" && hide()}
-      onFocus={show}
+      onFocus={() => !anchor && showAtElement()}
       onBlur={hide}
-      aria-describedby={pos ? id : undefined}
+      aria-describedby={anchor ? id : undefined}
     >
       {children}
-      {pos &&
+      {anchor &&
         createPortal(
           <div
+            ref={tipRef}
             id={id}
             role="tooltip"
-            className="pointer-events-none fixed z-50 animate-fade-in rounded-xl border border-white/10 bg-ink-700/95 p-3 text-left shadow-2xl backdrop-blur"
+            className="pointer-events-none fixed top-0 left-0 z-50 rounded-xl border border-white/10 bg-ink-700/95 p-3 text-left shadow-2xl backdrop-blur transition-opacity duration-150"
             style={{
-              left: pos.left,
-              top: pos.top,
               width: WIDTH,
-              transform: pos.above ? "translateY(-100%)" : undefined,
+              transform: place ? `translate(${place.left}px, ${place.top}px)` : undefined,
+              opacity: place ? 1 : 0,
             }}
           >
             {hasArt(term) && (

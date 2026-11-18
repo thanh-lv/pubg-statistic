@@ -42,7 +42,10 @@ export function SeasonPicker() {
   const options = [
     { value: "current", label: current ? `Mùa hiện tại · ${current.number}` : "Mùa hiện tại" },
     { value: "lifetime", label: "Toàn thời gian" },
-    ...list.filter((s) => !s.isCurrent).slice(0, 15).map((s) => ({ value: s.id, label: s.label })),
+    ...list
+      .filter((s, i) => !s.isCurrent && s.number !== current?.number && list.findIndex((x) => x.number === s.number) === i)
+      .slice(0, 15)
+      .map((s) => ({ value: s.id, label: s.label })),
   ];
   return <Select label="Mùa giải" value={season} onChange={setSeason} options={options} className="min-w-44" />;
 }

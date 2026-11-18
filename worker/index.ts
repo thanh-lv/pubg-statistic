@@ -92,7 +92,7 @@ const routes: [RegExp, Handler][] = [
     /^\/api\/seasons$/,
     async (ctx, url) => {
       const shard = getShard(url, ctx.env);
-      return json(await cached(ctx, `seasons:${shard}`, TTL.seasons, () => loadSeasons(ctx.env, shard)), 3600);
+      return json(await cached(ctx, `seasons:v2:${shard}`, TTL.seasons, () => loadSeasons(ctx.env, shard)), 3600);
     },
   ],
 
