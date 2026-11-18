@@ -56,9 +56,37 @@ export interface ZoneState {
   white: Circle | null;
 }
 
+/** Mọi người chơi trong trận (để vẽ đối thủ trên bản đồ) */
+export interface Actor {
+  id: string;
+  name: string;
+  teamId: number;
+  isBot: boolean;
+  isTeam: boolean;
+  /** Vết di chuyển dạng phẳng [t, x, y, t, x, y, …] (toạ độ chuẩn hoá) — gọn khi gửi từ Web Worker */
+  track: number[];
+  /** Thời điểm chết (giây) */
+  deathT: number | null;
+}
+
+/** Một phát bắn trúng: dùng vẽ đường đạn & vòng đỏ quanh người mất máu */
+export interface Hit {
+  t: number;
+  attackerId: string;
+  victimId: string;
+  ax: number;
+  ay: number;
+  vx: number;
+  vy: number;
+  damage: number;
+}
+
 export interface TelemetryAnalysis {
   duration: number;
   members: MemberAnalysis[];
   events: FeedEvent[];
   zones: ZoneState[];
+  actors: Actor[];
+  /** Sắp xếp theo t tăng dần */
+  hits: Hit[];
 }

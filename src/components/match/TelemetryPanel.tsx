@@ -11,7 +11,7 @@ import { Segmented } from "../ui/Segmented";
 import { Skeleton } from "../ui/Skeleton";
 import { ErrorState } from "../ui/States";
 import { InfoTip } from "../ui/Tip";
-import { MAP_MARK_COLORS, MatchMap } from "./MatchMap";
+import { MAP_COLORS, MatchMap } from "./MatchMap";
 
 const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
 const SPEEDS = [10, 30, 60] as const;
@@ -191,6 +191,8 @@ function Replay({
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(30);
   const [filter, setFilter] = useState<Filter>("all");
+  const [showOpponents, setShowOpponents] = useState(true);
+  const [showShots, setShowShots] = useState(true);
   const raf = useRef(0);
 
   useEffect(() => {
@@ -223,7 +225,17 @@ function Replay({
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       <div className="space-y-3">
-        <MatchMap mapName={match.mapName} analysis={analysis} colors={colors} time={time} focusId={focusId} />
+        <MatchMap
+          mapName={match.mapName}
+          analysis={analysis}
+          colors={colors}
+          time={time}
+          focusId={focusId}
+          showOpponents={showOpponents}
+          showShots={showShots}
+          // ~0.5s thực tế dù phát nhanh hay chậm
+          hitWindow={Math.max(2, speed * 0.5)}
+        />
 
         <div className="flex items-center gap-3">
           <button className="btn-primary size-9 shrink-0 p-0" onClick={togglePlay} aria-label={playing ? "Tạm dừng" : "Phát lại trận"}>
@@ -267,13 +279,22 @@ function Replay({
             </li>
           ))}
           <li className="flex items-center gap-1.5">
-            <span className="font-bold" style={{ color: MAP_MARK_COLORS.HUMAN }}>✕</span> Kill người
+            <span className="inline-block size-2.5 rounded-full border border-black" style={{ background: MAP_COLORS.opponent }} /> Đối thủ
           </li>
           <li className="flex items-center gap-1.5">
-            <span className="font-bold" style={{ color: MAP_MARK_COLORS.BOT }}>✕</span> Kill bot
+            <span className="font-bold" style={{ color: MAP_COLORS.human }}>✕</span> Kill người
           </li>
           <li className="flex items-center gap-1.5">
-            <span style={{ color: MAP_MARK_COLORS.HUMAN }}>◇</span> Knock
+            <span className="font-bold" style={{ color: MAP_COLORS.bot }}>✕</span> Kill bot
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span style={{ color: MAP_COLORS.human }}>◇</span> Knock
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: MAP_COLORS.opponent }} /> Đường đạn
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-full border-2" style={{ borderColor: MAP_COLORS.hitRing }} /> Đang mất máu
           </li>
           <li className="flex items-center gap-1.5">
             <span className="inline-block size-2.5 rounded-full border border-white" /> Tiếp đất
@@ -285,6 +306,11 @@ function Replay({
             <span className="inline-block size-3 rounded-full border-2 border-blue-500" /> Bo
           </li>
         </ul>
+
+        <div className="flex flex-wrap gap-2">
+          <Toggle checked={showOpponents} onChange={setShowOpponents} label="Hiện đối thủ" />
+          <Toggle checked={showShots} onChange={setShowShots} label="Đường đạn & vòng mất máu" />
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-col lg:h-0 lg:min-h-full">
@@ -317,6 +343,26 @@ function Replay({
         <p className="mt-2 text-[11px] text-fg-subtle">Bấm vào một sự kiện để tua bản đồ tới thời điểm đó.</p>
       </div>
     </div>
+  );
+}
+
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition",
+        checked ? "border-accent/40 bg-accent-soft text-fg" : "border-white/10 text-fg-muted hover:text-fg",
+      )}
+    >
+      <span className={cn("relative h-4 w-7 rounded-full transition", checked ? "bg-accent" : "bg-white/15")}>
+        <span className={cn("absolute top-0.5 size-3 rounded-full bg-white shadow transition-all", checked ? "left-3.5" : "left-0.5")} />
+      </span>
+      {label}
+    </button>
   );
 }
 

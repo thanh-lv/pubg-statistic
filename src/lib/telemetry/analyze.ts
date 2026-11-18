@@ -1,7 +1,7 @@
 import damageCauserName from "@/data/damageCauserName.json";
 import damageTypeCategory from "@/data/damageTypeCategory.json";
 import { mapSizeOf } from "../maps";
-import type { Circle, Count, FeedEvent, MemberAnalysis, Pt, TelemetryAnalysis, ZoneState } from "./types";
+import type { Actor, Circle, Count, FeedEvent, Hit, MemberAnalysis, Pt, TelemetryAnalysis, ZoneState } from "./types";
 
 /* Kiểu tối giản của các sự kiện telemetry cần dùng */
 interface Loc {
@@ -75,7 +75,18 @@ export function analyzeTelemetry(
   const feed: FeedEvent[] = [];
   const zones: ZoneState[] = [];
   const rawPaths = new Map<string, Pt[]>();
+  const actors = new Map<string, Actor>();
+  const hits: Hit[] = [];
   let duration = 0;
+
+  const actorOf = (c: Character) => {
+    let a = actors.get(c.accountId);
+    if (!a) {
+      a = { id: c.accountId, name: c.name, teamId: c.teamId, isBot: isBotId(c.accountId), isTeam: members.has(c.accountId), track: [], deathT: null };
+      actors.set(c.accountId, a);
+    }
+    return a;
+  };
 
   for (const e of events) {
     const t = tOf(e);
@@ -93,6 +104,10 @@ export function analyzeTelemetry(
 
       case "LogPlayerPosition": {
         const c = e.character as Character | undefined;
+        if (c?.location && c.accountId) {
+          const p = norm(c.location)!;
+          actorOf(c).track.push(Math.round(t * 10) / 10, p.x, p.y);
+        }
         if (c && members.has(c.accountId) && c.location) {
           ensure(c);
           const list = rawPaths.get(c.accountId) ?? [];
@@ -105,9 +120,17 @@ export function analyzeTelemetry(
       case "LogPlayerTakeDamage": {
         const a = e.attacker as Character | null;
         const v = e.victim as Character | null;
+        const dmg = Number(e.damage) || 0;
+        // Đường đạn: mọi phát trúng có người bắn (bỏ tự gây sát thương, bo, ngã…)
+        if (a?.location && v?.location && a.accountId && a.accountId !== v.accountId && dmg > 0) {
+          const pa = norm(a.location)!;
+          const pv = norm(v.location)!;
+          actorOf(a);
+          actorOf(v);
+          hits.push({ t, attackerId: a.accountId, victimId: v.accountId, ax: pa.x, ay: pa.y, vx: pv.x, vy: pv.y, damage: dmg });
+        }
         if (!a || !v || !members.has(a.accountId)) break;
         if (a.accountId === v.accountId || a.teamId === v.teamId) break;
-        const dmg = Number(e.damage) || 0;
         if (dmg > 0) bump(ensure(a).damage, isBotId(v.accountId), dmg);
         break;
       }
@@ -144,6 +167,7 @@ export function analyzeTelemetry(
             ? (e.killerDamageInfo ?? e.finishDamageInfo ?? e.dBNODamageInfo ?? {})
             : { damageCauserName: e.damageCauserName, damageTypeCategory: e.damageTypeCategory, damageReason: e.damageReason, distance: e.distance };
         if (!v) break;
+        if (v.accountId) actorOf(v).deathT ??= t;
 
         // Thành viên đội kill được đối thủ
         if (killer && members.has(killer.accountId) && killer.teamId !== v.teamId && !e.isSuicide) {
@@ -213,5 +237,12 @@ export function analyzeTelemetry(
   }
 
   const ordered = memberIds.map((id) => byId.get(id)).filter((m): m is MemberAnalysis => !!m);
-  return { duration, members: ordered, events: feed.sort((a, b) => a.t - b.t), zones };
+  return {
+    duration,
+    members: ordered,
+    events: feed.sort((a, b) => a.t - b.t),
+    zones,
+    actors: [...actors.values()],
+    hits: hits.sort((a, b) => a.t - b.t),
+  };
 }

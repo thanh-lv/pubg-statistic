@@ -1,15 +1,22 @@
 import { Maximize2, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { MAP_2D } from "@/lib/maps";
-import type { FeedEvent, Pt, TelemetryAnalysis, ZoneState } from "@/lib/telemetry/types";
+import { MAP_2D, TILE_GRID } from "@/lib/maps";
+import type { Actor, FeedEvent, Hit, TelemetryAnalysis, ZoneState } from "@/lib/telemetry/types";
 
 /** Toạ độ thế giới của SVG: bản đồ = 0..W */
 const W = 1000;
-/** Ảnh bản đồ chỉ 819px → giới hạn zoom để không quá mờ */
-const MIN_VIEW = 110;
+const MIN_VIEW = 80;
 const MIN_FIT = 280;
-const HUMAN = "#f87171";
-const BOT = "#9aa1b2";
+/** Zoom vào hơn mức này thì tải tile độ nét cao */
+const TILE_THRESHOLD = 700;
+
+export const MAP_COLORS = {
+  human: "#f87171",
+  bot: "#9aa1b2",
+  /** Mọi đối thủ (người & bot) dùng chung 1 màu */
+  opponent: "#e2e8f0",
+  hitRing: "#ef4444",
+};
 
 type View = { x: number; y: number; w: number };
 
@@ -40,24 +47,65 @@ const lastBefore = <T extends { t: number }>(list: T[], t: number) => {
   return found;
 };
 
+/** Vị trí nội suy trên vết [t,x,y,…] tại thời điểm t (null nếu chưa xuất hiện / mất dấu quá lâu) */
+function posAt(track: number[], t: number, staleAfter = 25): { x: number; y: number } | null {
+  const n = track.length / 3;
+  if (!n || t < track[0]) return null;
+  let lo = 0;
+  let hi = n - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (track[mid * 3] <= t) lo = mid;
+    else hi = mid - 1;
+  }
+  const i = lo * 3;
+  if (lo === n - 1) return t - track[i] > staleAfter ? null : { x: track[i + 1], y: track[i + 2] };
+  const k = (t - track[i]) / (track[i + 3] - track[i] || 1);
+  return { x: track[i + 1] + (track[i + 4] - track[i + 1]) * k, y: track[i + 2] + (track[i + 5] - track[i + 2]) * k };
+}
+
+/** Các phát trúng trong khoảng (t - win, t] */
+function hitsIn(hits: Hit[], t: number, win: number): Hit[] {
+  let lo = 0;
+  let hi = hits.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (hits[mid].t <= t - win) lo = mid + 1;
+    else hi = mid;
+  }
+  const out: Hit[] = [];
+  for (let i = lo; i < hits.length && hits[i].t <= t; i++) out.push(hits[i]);
+  return out;
+}
+
 export function MatchMap({
   mapName,
   analysis,
   colors,
   time,
   focusId,
+  showOpponents = true,
+  showShots = true,
+  hitWindow = 2,
 }: {
   mapName: string;
   analysis: TelemetryAnalysis;
   colors: Record<string, string>;
   time: number;
   focusId?: string | null;
+  showOpponents?: boolean;
+  showShots?: boolean;
+  /** Đường đạn / vòng đỏ hiển thị trong bao nhiêu giây (theo thời gian trận) */
+  hitWindow?: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const initial = useMemo(() => fitView(analysis), [analysis]);
   const [view, setView] = useState<View>(initial);
   const drag = useRef<{ px: number; py: number; view: View } | null>(null);
-  const img = MAP_2D[mapName]?.image;
+  const mapInfo = MAP_2D[mapName];
+
+  const actorById = useMemo(() => new Map(analysis.actors.map((a) => [a.id, a])), [analysis]);
+  const opponents = useMemo(() => analysis.actors.filter((a) => !a.isTeam), [analysis]);
 
   const zoomAt = useCallback((factor: number, fx = 0.5, fy = 0.5) => {
     setView((v) => {
@@ -96,6 +144,23 @@ export function MatchMap({
   const s = view.w / W;
   const zone: ZoneState | undefined = lastBefore(analysis.zones, time);
   const events = analysis.events.filter((e) => e.t <= time && e.kind !== "death");
+  const recentHits = showShots ? hitsIn(analysis.hits, time, hitWindow) : [];
+
+  // Tile độ nét cao: chỉ các ô nằm trong khung nhìn
+  const tiles: { r: number; c: number }[] = [];
+  if (mapInfo?.tiles && view.w < TILE_THRESHOLD) {
+    const ts = W / TILE_GRID;
+    for (let r = 0; r < TILE_GRID; r++)
+      for (let c = 0; c < TILE_GRID; c++)
+        if (c * ts < view.x + view.w && (c + 1) * ts > view.x && r * ts < view.y + view.w && (r + 1) * ts > view.y)
+          tiles.push({ r, c });
+  }
+
+  const teamPos = (id: string, deathT: number | null) => {
+    const a = actorById.get(id);
+    if (!a) return null;
+    return posAt(a.track, deathT !== null ? Math.min(time, deathT) : time, Infinity);
+  };
 
   return (
     <div className="relative">
@@ -108,11 +173,23 @@ export function MatchMap({
         onPointerCancel={onUp}
       >
         <svg viewBox={`${view.x} ${view.y} ${view.w} ${view.w}`} className="size-full" role="img" aria-label="Bản đồ trận đấu">
-          {img ? (
-            <image href={img} x={0} y={0} width={W} height={W} preserveAspectRatio="none" />
+          {mapInfo ? (
+            <image href={mapInfo.image} x={0} y={0} width={W} height={W} preserveAspectRatio="none" />
           ) : (
             <rect width={W} height={W} fill="#10141b" />
           )}
+          {tiles.map(({ r, c }) => (
+            <image
+              key={`${r}_${c}`}
+              href={`/maps/tiles/${mapInfo!.tiles}/${r}_${c}.webp`}
+              x={(c * W) / TILE_GRID}
+              y={(r * W) / TILE_GRID}
+              // phủ chồng 0.4 đơn vị để không lộ khe giữa các ô
+              width={W / TILE_GRID + 0.4}
+              height={W / TILE_GRID + 0.4}
+              preserveAspectRatio="none"
+            />
+          ))}
 
           {/* Vòng bo */}
           {zone?.blue && (
@@ -129,15 +206,17 @@ export function MatchMap({
             <circle cx={zone.white.x * W} cy={zone.white.y * W} r={zone.white.r * W} fill="none" stroke="#fff" strokeWidth={2 * s} strokeDasharray={`${6 * s} ${4 * s}`} />
           )}
 
-          {/* Đường đi */}
+          {/* Đường đi của đội */}
           {analysis.members.map((m) => {
-            const pts = m.path.filter((p) => p.t <= time);
+            const pts = m.path.filter((p) => p.t <= time).map((p) => `${p.x * W},${p.y * W}`);
+            const now = teamPos(m.id, m.death?.t ?? null);
+            if (now && (!m.death || time < m.death.t)) pts.push(`${now.x * W},${now.y * W}`);
             if (pts.length < 2) return null;
             const focus = !focusId || focusId === m.id;
             return (
               <polyline
                 key={m.id}
-                points={pts.map((p) => `${p.x * W},${p.y * W}`).join(" ")}
+                points={pts.join(" ")}
                 fill="none"
                 stroke={colors[m.id]}
                 strokeWidth={(focus ? 3 : 2) * s}
@@ -159,13 +238,37 @@ export function MatchMap({
               ),
           )}
 
-          {/* Kill & knock */}
+          {/* Kill & knock của đội */}
           {events.map((e, i) => (e.pos ? <EventMark key={i} e={e} s={s} /> : null))}
 
-          {/* Vị trí hiện tại / nơi chết */}
+          {/* Đối thủ: cùng 1 màu */}
+          {showOpponents && opponents.map((a) => <OpponentDot key={a.id} a={a} time={time} s={s} />)}
+
+          {/* Đường đạn: người bắn → người trúng, mờ dần */}
+          {recentHits.map((h, i) => {
+            const fade = 1 - (time - h.t) / hitWindow;
+            const shooter = actorById.get(h.attackerId);
+            const color = shooter?.isTeam ? (colors[h.attackerId] ?? MAP_COLORS.opponent) : MAP_COLORS.opponent;
+            return (
+              <line
+                key={`shot-${i}`}
+                x1={h.ax * W}
+                y1={h.ay * W}
+                x2={h.vx * W}
+                y2={h.vy * W}
+                stroke={color}
+                strokeWidth={1.6 * s}
+                strokeLinecap="round"
+                strokeDasharray={`${5 * s} ${3 * s}`}
+                opacity={0.25 + 0.75 * fade}
+              />
+            );
+          })}
+
+          {/* Vị trí hiện tại / nơi chết của đội */}
           {analysis.members.map((m) => {
-            const dead = m.death && m.death.t <= time;
-            const p: Pt | undefined = dead && m.death?.pos ? { t: m.death.t, ...m.death.pos } : lastBefore(m.path, time);
+            const dead = !!m.death && m.death.t <= time;
+            const p = dead && m.death?.pos ? m.death.pos : teamPos(m.id, m.death?.t ?? null);
             if (!p) return null;
             const cx = p.x * W;
             const cy = p.y * W;
@@ -182,26 +285,47 @@ export function MatchMap({
                 ) : (
                   <circle cx={cx} cy={cy} r={7 * s} fill={colors[m.id]} stroke="#fff" strokeWidth={2 * s} />
                 )}
-                {showName && <text
-                  x={cx}
-                  y={cy - 12 * s}
-                  textAnchor="middle"
-                  fontSize={12 * s}
-                  fontWeight={700}
-                  fill="#fff"
-                  stroke="#000"
-                  strokeWidth={3 * s}
-                  paintOrder="stroke"
-                  style={{ fontFamily: "var(--font-sans)" }}
-                >
-                  {m.name}
-                </text>}
+                {showName && (
+                  <text
+                    x={cx}
+                    y={cy - 12 * s}
+                    textAnchor="middle"
+                    fontSize={12 * s}
+                    fontWeight={700}
+                    fill="#fff"
+                    stroke="#000"
+                    strokeWidth={3 * s}
+                    paintOrder="stroke"
+                    style={{ fontFamily: "var(--font-sans)" }}
+                  >
+                    {m.name}
+                  </text>
+                )}
               </g>
+            );
+          })}
+
+          {/* Vòng đỏ quanh người vừa bị bắn trúng (đang mất máu) */}
+          {recentHits.map((h, i) => {
+            const age = (time - h.t) / hitWindow;
+            return (
+              <circle
+                key={`hit-${i}`}
+                cx={h.vx * W}
+                cy={h.vy * W}
+                r={(8 + 8 * age) * s}
+                fill="none"
+                stroke={MAP_COLORS.hitRing}
+                strokeWidth={Math.min(4, 1.6 + h.damage / 25) * s}
+                opacity={1 - age}
+              >
+                <title>{`${actorById.get(h.victimId)?.name ?? "?"} mất ${Math.round(h.damage)} máu`}</title>
+              </circle>
             );
           })}
         </svg>
 
-        {!img && (
+        {!mapInfo && (
           <div className="pointer-events-none absolute inset-x-0 top-3 text-center text-xs text-fg-subtle">Chưa có ảnh cho bản đồ này</div>
         )}
       </div>
@@ -228,10 +352,34 @@ export function MatchMap({
   );
 }
 
+function OpponentDot({ a, time, s }: { a: Actor; time: number; s: number }) {
+  if (a.deathT !== null && time > a.deathT) {
+    // Vừa chết: dấu ✕ mờ dần trong 10s
+    const age = time - a.deathT;
+    if (age > 10) return null;
+    const p = posAt(a.track, a.deathT, Infinity);
+    if (!p) return null;
+    const r = 3.5 * s;
+    return (
+      <g stroke={MAP_COLORS.opponent} strokeWidth={1.6 * s} opacity={0.8 * (1 - age / 10)}>
+        <line x1={p.x * W - r} y1={p.y * W - r} x2={p.x * W + r} y2={p.y * W + r} />
+        <line x1={p.x * W + r} y1={p.y * W - r} x2={p.x * W - r} y2={p.y * W + r} />
+      </g>
+    );
+  }
+  const p = posAt(a.track, time);
+  if (!p) return null;
+  return (
+    <circle cx={p.x * W} cy={p.y * W} r={4.5 * s} fill={MAP_COLORS.opponent} stroke="#0a0c10" strokeWidth={1.4 * s} opacity={0.92}>
+      <title>{`${a.name}${a.isBot ? " (bot)" : ""}`}</title>
+    </circle>
+  );
+}
+
 function EventMark({ e, s }: { e: FeedEvent; s: number }) {
   const cx = e.pos!.x * W;
   const cy = e.pos!.y * W;
-  const color = e.otherIsBot ? BOT : HUMAN;
+  const color = e.otherIsBot ? MAP_COLORS.bot : MAP_COLORS.human;
   const title = `${e.memberName} ${e.kind === "kill" ? "kill" : "knock"} ${e.otherName}${e.otherIsBot ? " (bot)" : ""} · ${e.weapon}`;
   if (e.kind === "knock") {
     const r = 5 * s;
@@ -250,5 +398,3 @@ function EventMark({ e, s }: { e: FeedEvent; s: number }) {
     </g>
   );
 }
-
-export const MAP_MARK_COLORS = { HUMAN, BOT };
