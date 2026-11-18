@@ -75,6 +75,10 @@ npm run deploy
 
 Xong. Bạn sẽ có link dạng `https://pubg-squad-stats.<tên-bạn>.workers.dev`. Có thể gắn domain riêng trong Cloudflare Dashboard → Workers → Settings → Domains & Routes.
 
+> **API key bị mất sau mỗi lần deploy?** Key phải được lưu dạng **Secret**, không phải biến thường ("Text").
+> Dùng `npx wrangler secret put PUBG_API_KEY`, hoặc trên Dashboard: Worker → Settings → Variables and Secrets → Add → Type **Secret**.
+> Đừng đặt ở mục *Build variables* (chỉ dùng lúc build, Worker không đọc được). File `wrangler.jsonc` đã bật `keep_vars: true` để deploy không xoá biến trên Dashboard.
+
 ### 5. (Khuyến nghị) Bật KV cache
 
 PUBG API giới hạn **10 request/phút**. Worker đã cache trong bộ nhớ, nhưng nên bật KV để cache bền hơn khi nhiều bạn cùng vào:

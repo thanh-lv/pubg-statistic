@@ -12,6 +12,9 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
+  // Giữ lại các biến đặt trên Dashboard khi deploy (mặc định wrangler sẽ ghi đè bằng "vars" bên dưới).
+  // PUBG_API_KEY vẫn nên đặt dạng Secret: `npx wrangler secret put PUBG_API_KEY`.
+  "keep_vars": true,
   "vars": {
     // Nền tảng mặc định: steam | kakao | psn | xbox | console
     "DEFAULT_SHARD": "steam"
