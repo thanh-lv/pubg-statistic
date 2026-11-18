@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pubg-squad-stats",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+  "assets": {
+    // Các file build của React được phục vụ như static assets.
+    // Mọi route không phải /api/* sẽ trả về index.html (SPA).
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    // Nền tảng mặc định: steam | kakao | psn | xbox | console
+    "DEFAULT_SHARD": "steam"
+  }
+  // (Khuyến nghị) Bật KV để cache bền hơn và tránh dính rate-limit 10 req/phút:
+  //   npx wrangler kv namespace create PUBG_CACHE
+  // rồi bỏ comment và dán id vào đây:
+  // "kv_namespaces": [{ "binding": "PUBG_CACHE", "id": "<KV_ID>" }]
+}

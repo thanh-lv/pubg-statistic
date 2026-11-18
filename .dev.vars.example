@@ -1,0 +1,2 @@
+# Copy file này thành .dev.vars rồi dán API key lấy ở https://developer.pubg.com
+PUBG_API_KEY=your-pubg-api-key-here

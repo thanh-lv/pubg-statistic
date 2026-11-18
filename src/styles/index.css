@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@theme static {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Chakra Petch", "Be Vietnam Pro", ui-sans-serif, sans-serif;
+
+  /* Nền & bề mặt */
+  --color-ink-950: #07090c;
+  --color-ink-900: #0a0c10;
+  --color-ink-850: #0f1218;
+  --color-ink-800: #141821;
+  --color-ink-700: #1c212c;
+  --color-ink-600: #272d3a;
+  --color-ink-500: #3a4152;
+
+  /* Chữ */
+  --color-fg: #e8eaf0;
+  --color-fg-muted: #9aa1b2;
+  --color-fg-subtle: #6b7286;
+
+  /* Nhấn */
+  --color-accent: #f5b62e;
+  --color-accent-soft: #f5b62e1f;
+  --color-win: #34d399;
+  --color-loss: #f87171;
+
+  --animate-fade-in: fade-in 0.35s ease-out both;
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-ink-900 font-sans text-fg antialiased;
+    background-image:
+      radial-gradient(60rem 30rem at 85% -10%, rgb(245 182 46 / 0.07), transparent 60%),
+      radial-gradient(40rem 24rem at -10% 10%, rgb(56 189 248 / 0.05), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+  ::selection {
+    @apply bg-accent text-ink-950;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+@utility card {
+  @apply rounded-2xl border border-white/[0.06] bg-ink-850/80 shadow-[0_1px_0_0_rgb(255_255_255/0.03)_inset] backdrop-blur;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply btn bg-accent text-ink-950 hover:brightness-110 active:brightness-95;
+}
+
+@utility btn-ghost {
+  @apply btn border border-white/[0.08] bg-white/[0.03] text-fg hover:bg-white/[0.07];
+}
+
+@utility input {
+  @apply w-full rounded-xl border border-white/[0.08] bg-ink-950/60 px-3.5 py-2 text-sm text-fg placeholder:text-fg-subtle transition focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20;
+}
+
+@utility num {
+  @apply font-display tabular-nums tracking-tight;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
