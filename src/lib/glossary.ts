@@ -94,6 +94,11 @@ export const GLOSSARY = {
     title: "TPP / FPP",
     desc: "TPP: góc nhìn thứ ba (thấy được nhân vật). FPP: góc nhìn thứ nhất (qua mắt nhân vật).",
   },
+  humanBot: {
+    title: "Người / Bot",
+    desc: "Trận thường của PUBG có thêm bot (AI) để lấp chỗ. Telemetry ghi lại từng lần kill/knock/sát thương kèm mã tài khoản nạn nhân — mã bot bắt đầu bằng \"ai.\" nên tách được kill người và kill bot.",
+    example: "Kill người 3 · bot 2 → 60% kill là người thật",
+  },
   place: { title: "Thứ hạng trận", desc: "#1 là thắng. Số sau dấu / là tổng số đội trong trận." },
 } satisfies Record<string, Term>;
 
@@ -102,7 +107,7 @@ export type TermKey = keyof typeof GLOSSARY;
 /** Thứ tự hiển thị trong bảng giải thích */
 export const GLOSSARY_GROUPS: { title: string; keys: TermKey[] }[] = [
   { title: "Chỉ số chính", keys: ["kd", "kda", "adr", "winRate", "top10Rate", "hsRate", "avgKills"] },
-  { title: "Chiến đấu", keys: ["dBNOs", "assists", "longestKill", "roundMostKills", "maxKillStreaks"] },
+  { title: "Chiến đấu", keys: ["humanBot", "dBNOs", "assists", "longestKill", "roundMostKills", "maxKillStreaks"] },
   { title: "Sinh tồn & đồng đội", keys: ["avgSurvival", "revives", "heals", "boosts"] },
   { title: "Rank & chế độ", keys: ["rp", "tier", "avgRank", "tppFpp", "place"] },
 ];

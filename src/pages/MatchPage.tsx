@@ -1,6 +1,7 @@
 import type { MatchParticipant, MatchSummary } from "@shared/types";
 import { ArrowLeft, Bot, CalendarClock, Clock, Map as MapIcon, Users } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { TelemetryPanel } from "@/components/match/TelemetryPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
 import { PlaceBadge } from "@/components/ui/PlaceBadge";
@@ -69,6 +70,16 @@ export function MatchPage() {
           </h2>
           <ParticipantTable rows={m.participants.filter((p) => myTeam.playerIds.includes(p.playerId))} highlight={playerId} />
         </section>
+      )}
+
+      {myTeam && (
+        <TelemetryPanel
+          match={m}
+          focusId={playerId}
+          team={m.participants
+            .filter((p) => myTeam.playerIds.includes(p.playerId) && !p.isBot)
+            .map((p) => ({ id: p.playerId, name: p.name }))}
+        />
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">

@@ -141,7 +141,7 @@ const routes: [RegExp, Handler][] = [
     async (ctx, url, [id]) => {
       const shard = getShard(url, ctx.env);
       check(id, RE_MATCH, "Match id");
-      const result = await cached(ctx, `match:${shard}:${id}`, TTL.match, () => loadMatch(ctx.env, shard, id), {
+      const result = await cached(ctx, `match:v2:${shard}:${id}`, TTL.match, () => loadMatch(ctx.env, shard, id), {
         kv: false,
       });
       return json(result, 7 * 24 * 3600);

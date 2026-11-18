@@ -46,5 +46,6 @@ export const api = {
     get<PlayerSeasonStats>(`/api/player/${id}/season/${encodeURIComponent(season)}`, { shard }),
   playerRanked: (id: string, season: string, shard: string) =>
     get<PlayerRanked>(`/api/player/${id}/ranked/${encodeURIComponent(season)}`, { shard }),
-  match: (id: string, shard: string) => get<MatchSummary>(`/api/matches/${id}`, { shard }),
+  // `v`: tăng khi đổi dạng dữ liệu trận (trình duyệt cache 7 ngày)
+  match: (id: string, shard: string) => get<MatchSummary>(`/api/matches/${id}`, { shard, v: "2" }),
 };

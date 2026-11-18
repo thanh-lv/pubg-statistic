@@ -265,6 +265,10 @@ export async function loadMatch(env: Env, shard: string, matchId: string): Promi
   }
   teams.sort((x, y) => x.rank - y.rank);
 
+  const asset = included.find((inc) => inc.type === "asset");
+  const url = typeof asset?.attributes?.URL === "string" ? asset.attributes.URL : null;
+  const telemetryUrl = url && (/^https:\/\/telemetry-cdn\.pubg\.com\//.test(url) || env.PUBG_API_BASE) ? url : null;
+
   return {
     id: doc.data.id,
     createdAt: a.createdAt,
@@ -275,6 +279,7 @@ export async function loadMatch(env: Env, shard: string, matchId: string): Promi
     isCustomMatch: !!a.isCustomMatch,
     shard: a.shardId ?? shard,
     teamCount: teams.length,
+    telemetryUrl,
     participants: [...byParticipantId.values()].sort((x, y) => x.winPlace - y.winPlace || y.kills - x.kills),
     teams,
   };

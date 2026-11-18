@@ -181,6 +181,8 @@ export interface MatchSummary {
   isCustomMatch: boolean;
   shard: string;
   teamCount: number;
+  /** Link file telemetry (log sự kiện chi tiết) — không cần API key, CORS mở */
+  telemetryUrl: string | null;
   participants: MatchParticipant[];
   teams: MatchTeam[];
 }
