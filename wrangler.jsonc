@@ -7,6 +7,8 @@
   "assets": {
     // Các file build của React được phục vụ như static assets.
     // Mọi route không phải /api/* sẽ trả về index.html (SPA).
+    // "directory" giúp các lệnh wrangler (secret put, deploy…) chạy được cả khi chưa build.
+    "directory": "./dist/client",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
