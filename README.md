@@ -35,7 +35,7 @@ Website xem nhanh thống kê PUBG của bạn và bạn bè mà không cần m�
 │   ├── hooks/           # data hooks (React Query), state đội hình
 │   ├── lib/             # api client, format số, công thức chỉ số, glossary
 │   └── styles/index.css # theme Tailwind (màu, font, component class)
-├── public/              # favicon, avatars/helmets/ (ảnh mũ từ pubg/api-assets)
+├── public/              # favicon, avatars/helmets/, maps/, weapons/ (ảnh từ pubg/api-assets)
 └── wrangler.jsonc       # cấu hình Cloudflare
 ```
 
@@ -100,6 +100,7 @@ Copy `id` vào `wrangler.jsonc` (bỏ comment dòng `kv_namespaces`) rồi `npm 
 | `GET /api/squad-stats?ids=…&season=…&mode=squad` | Stats cả đội 1 chế độ (batch) | 10 phút |
 | `GET /api/player/:id/season/:season`               | Stats 1 người, mọi chế độ     | 10 phút |
 | `GET /api/player/:id/ranked/:season`               | Stats rank                          | 10 phút |
+| `GET /api/player/:id/weapons`                      | Weapon Mastery (thống kê theo súng)           | 1 giờ   |
 | `GET /api/matches/:id`                             | Chi tiết trận (đã rút gọn)    | 30 ngày |
 
 Tất cả đều nhận `?shard=steam|kakao|psn|xbox|console`. `season` là id mùa hoặc `lifetime`. Khi PUBG API trả lỗi 429/5xx, Worker trả lại dữ liệu cache cũ (`meta.stale: true`) thay vì báo lỗi.
@@ -115,4 +116,4 @@ Tất cả đều nhận `?shard=steam|kakao|psn|xbox|console`. `season` là id 
 
 ---
 
-Dữ liệu từ PUBG Developer API. Ảnh mũ bảo hiểm lấy từ [pubg/api-assets](https://github.com/pubg/api-assets) — tài nguyên chính thức dành cho developer, sử dụng theo [PUBG API Terms of Use](https://developer.pubg.com/tos). Dự án cá nhân, không liên kết với KRAFTON.
+Dữ liệu từ PUBG Developer API. Ảnh mũ bảo hiểm, bản đồ và vũ khí lấy từ [pubg/api-assets](https://github.com/pubg/api-assets) — tài nguyên chính thức dành cho developer, sử dụng theo [PUBG API Terms of Use](https://developer.pubg.com/tos). Dự án cá nhân, không liên kết với KRAFTON.

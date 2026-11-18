@@ -85,3 +85,15 @@ export function useMatches(ids: string[]) {
   const { shard } = useSquad();
   return useQueries({ queries: ids.map((id) => matchQuery(id, shard)) });
 }
+
+/** Weapon Mastery của từng người (mỗi người 1 request, cache riêng) */
+export function useSquadWeapons(ids: string[]) {
+  const { shard } = useSquad();
+  return useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ["weapons", shard, id],
+      queryFn: () => api.weapons(id, shard),
+      staleTime: 30 * MIN,
+    })),
+  });
+}

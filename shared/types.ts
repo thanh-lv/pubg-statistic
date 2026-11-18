@@ -186,3 +186,30 @@ export interface MatchSummary {
   participants: MatchParticipant[];
   teams: MatchTeam[];
 }
+
+/* ------------------------------ Weapons ----------------------------- */
+
+/** Thống kê 1 khẩu súng theo Weapon Mastery (cộng dồn cả sự nghiệp, không chia mùa/chế độ) */
+export interface WeaponStat {
+  /** vd. "Item_Weapon_AK47_C" */
+  id: string;
+  level: number;
+  tier: number;
+  xp: number;
+  kills: number;
+  /** Số lần hạ gục (knock) */
+  knocks: number;
+  damage: number;
+  headshots: number;
+  /** mét */
+  longestKill: number;
+  longRangeKills: number;
+  mostKillsInGame: number;
+  mostDamageInGame: number;
+}
+
+export interface PlayerWeapons {
+  playerId: string;
+  /** Sắp xếp theo kill giảm dần */
+  weapons: WeaponStat[];
+}

@@ -8,9 +8,11 @@ import type {
   PlayerSeasonStats,
   PlayerSummary,
   PlayersResult,
+  PlayerWeapons,
   RankedModeStats,
   Season,
   SquadStats,
+  WeaponStat,
 } from "../shared/types";
 import type { Env } from "./env";
 import { HttpError } from "./errors";
@@ -206,6 +208,53 @@ export async function loadPlayerRanked(
     if (err instanceof HttpError && err.status === 404) return { playerId, seasonId, modes: {} };
     throw err;
   }
+}
+
+/* ------------------------------ Weapons ------------------------------ */
+
+/**
+ * Weapon Mastery: thống kê theo từng khẩu súng, cộng dồn cả sự nghiệp.
+ * Dữ liệu thật: `StatsTotal` thường toàn 0, số liệu nằm ở `OfficialStatsTotal` (trận thường)
+ * và `CompetitiveStatsTotal` (rank) → cộng 2 nhóm đó; vẫn đọc `StatsTotal` phòng khi PUBG đổi lại.
+ * `Kills`/`Defeats` tuỳ nhóm chỉ có 1 cái khác 0 → lấy giá trị lớn hơn.
+ */
+export async function loadWeaponMastery(env: Env, shard: string, playerId: string): Promise<PlayerWeapons> {
+  let summaries: Record<string, any> = {};
+  try {
+    const doc = await pubgFetch<JsonApiDoc<JsonApiResource<any>>>(
+      env,
+      `/shards/${shard}/players/${playerId}/weapon_mastery`,
+    );
+    summaries = doc.data?.attributes?.weaponSummaries ?? {};
+  } catch (err) {
+    if (!(err instanceof HttpError && err.status === 404)) throw err;
+  }
+
+  const weapons: WeaponStat[] = Object.entries(summaries).map(([id, w]) => {
+    const total = w?.StatsTotal ?? {};
+    const groups: Record<string, unknown>[] = [w?.OfficialStatsTotal ?? {}, w?.CompetitiveStatsTotal ?? {}];
+    const kills = (g: Record<string, unknown>) => Math.max(num(g.Kills), num(g.Defeats));
+    /** tổng các nhóm, hoặc StatsTotal nếu lớn hơn */
+    const sum = (get: (g: Record<string, unknown>) => number) =>
+      Math.max(get(total), groups.reduce((acc, g) => acc + get(g), 0));
+    const max = (get: (g: Record<string, unknown>) => number) => Math.max(get(total), ...groups.map(get));
+    return {
+      id,
+      level: num(w?.LevelCurrent),
+      tier: num(w?.TierCurrent),
+      xp: num(w?.XPTotal),
+      kills: sum(kills),
+      knocks: sum((g) => num(g.Groggies)),
+      damage: sum((g) => num(g.DamagePlayer)),
+      headshots: sum((g) => num(g.HeadShots)),
+      longestKill: max((g) => Math.max(num(g.LongestKill), num(g.LongestDefeat))),
+      longRangeKills: sum((g) => num(g.LongRangeDefeats)),
+      mostKillsInGame: max((g) => Math.max(num(g.MostKillsInAGame), num(g.MostDefeatsInAGame))),
+      mostDamageInGame: max((g) => num(g.MostDamagePlayerInAGame)),
+    };
+  });
+  weapons.sort((a, b) => b.kills - a.kills || b.damage - a.damage || b.xp - a.xp);
+  return { playerId, weapons };
 }
 
 /* ------------------------------ Matches ------------------------------ */

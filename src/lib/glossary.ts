@@ -99,6 +99,28 @@ export const GLOSSARY = {
     desc: "Trận thường của PUBG có thêm bot (AI) để lấp chỗ. Telemetry ghi lại từng lần kill/knock/sát thương kèm mã tài khoản nạn nhân — mã bot bắt đầu bằng \"ai.\" nên tách được kill người và kill bot.",
     example: "Kill người 3 · bot 2 → 60% kill là người thật",
   },
+  weaponMastery: {
+    title: "Weapon Mastery",
+    desc: "PUBG ghi lại thống kê riêng cho từng khẩu súng suốt cả sự nghiệp — không chia theo mùa hay chế độ. Đây cũng là nguồn số liệu của mục Vũ khí.",
+    example: "Beryl: 412 kill · 380 knock · 61.200 sát thương",
+  },
+  weaponLevel: {
+    title: "Level súng",
+    desc: "Cấp thành thạo của khẩu súng (1–100). Tăng dần khi bạn gây sát thương, knock và kill bằng súng đó.",
+  },
+  weaponKnocks: {
+    title: "Knock (theo súng)",
+    desc: "Số lần đánh gục (DBNO) đối thủ bằng khẩu súng này. Knock nhiều nhưng kill ít = hay bị đồng đội đối phương cứu hoặc nhường kill cho đồng đội.",
+  },
+  weaponLongest: {
+    title: "Kill xa nhất (theo súng)",
+    desc: "Khoảng cách xa nhất bạn từng kill được đối thủ bằng khẩu súng này.",
+  },
+  weaponStyle: {
+    title: "Phong cách",
+    desc: "Tỉ lệ kill theo từng nhóm súng: AR (súng trường), DMR (bắn tỉa bán tự động), Sniper (bắn tỉa từng phát), SMG (tiểu liên), Shotgun, LMG (súng máy)… Cho thấy ai thích đánh gần, ai thích bắn xa.",
+    formula: "Kill bằng nhóm súng ÷ tổng kill bằng súng",
+  },
   place: { title: "Thứ hạng trận", desc: "#1 là thắng. Số sau dấu / là tổng số đội trong trận." },
 } satisfies Record<string, Term>;
 
@@ -109,5 +131,6 @@ export const GLOSSARY_GROUPS: { title: string; keys: TermKey[] }[] = [
   { title: "Chỉ số chính", keys: ["kd", "kda", "adr", "winRate", "top10Rate", "hsRate", "avgKills"] },
   { title: "Chiến đấu", keys: ["humanBot", "dBNOs", "assists", "longestKill", "roundMostKills", "maxKillStreaks"] },
   { title: "Sinh tồn & đồng đội", keys: ["avgSurvival", "revives", "heals", "boosts"] },
+  { title: "Vũ khí", keys: ["weaponMastery", "weaponLevel", "weaponKnocks", "weaponLongest", "weaponStyle"] },
   { title: "Rank & chế độ", keys: ["rp", "tier", "avgRank", "tppFpp", "place"] },
 ];

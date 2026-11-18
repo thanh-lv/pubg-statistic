@@ -6,6 +6,7 @@ import type {
   PlayerRanked,
   PlayerSeasonStats,
   PlayersResult,
+  PlayerWeapons,
   Season,
   SquadStats,
 } from "@shared/types";
@@ -46,6 +47,7 @@ export const api = {
     get<PlayerSeasonStats>(`/api/player/${id}/season/${encodeURIComponent(season)}`, { shard }),
   playerRanked: (id: string, season: string, shard: string) =>
     get<PlayerRanked>(`/api/player/${id}/ranked/${encodeURIComponent(season)}`, { shard }),
+  weapons: (id: string, shard: string) => get<PlayerWeapons>(`/api/player/${id}/weapons`, { shard, v: "2" }),
   // `v`: tăng khi đổi dạng dữ liệu trận (trình duyệt cache 7 ngày)
   match: (id: string, shard: string) => get<MatchSummary>(`/api/matches/${id}`, { shard, v: "2" }),
 };

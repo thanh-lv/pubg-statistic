@@ -4,6 +4,7 @@ import { Filters } from "@/components/layout/Filters";
 import { Awards } from "@/components/squad/Awards";
 import { CompareBars } from "@/components/squad/CompareBars";
 import { Leaderboard } from "@/components/squad/Leaderboard";
+import { WeaponCompare } from "@/components/squad/WeaponCompare";
 import type { SquadRow } from "@/components/squad/types";
 import { Glossary } from "@/components/ui/Glossary";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -96,6 +97,7 @@ export function SquadPage() {
             <Leaderboard rows={rows} />
             <CompareBars rows={rows} />
           </div>
+          <WeaponCompare rows={rows} />
           <Glossary />
         </>
       )}

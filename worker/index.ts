@@ -2,7 +2,7 @@ import { GAME_MODES, SHARDS, type ApiErrorBody, type ApiResponse, type GameMode,
 import { cached, type CachedResult } from "./cache";
 import type { Ctx, Env } from "./env";
 import { HttpError } from "./errors";
-import { loadMatch, loadPlayerRanked, loadPlayerSeason, loadPlayers, loadSeasons, loadSquadStats } from "./pubg";
+import { loadMatch, loadPlayerRanked, loadPlayerSeason, loadPlayers, loadSeasons, loadSquadStats, loadWeaponMastery } from "./pubg";
 
 /** TTL (giây) cho từng loại dữ liệu */
 const TTL = {
@@ -11,6 +11,7 @@ const TTL = {
   stats: 10 * 60,
   lifetime: 30 * 60,
   ranked: 10 * 60,
+  weapons: 60 * 60, // Weapon Mastery thay đổi chậm
   match: 30 * 24 * 3600, // trận đấu đã kết thúc không đổi nữa
 };
 
@@ -132,6 +133,17 @@ const routes: [RegExp, Handler][] = [
       check(season, RE_SEASON, "Mùa giải");
       const key = `ranked:${shard}:${id}:${season}`;
       return json(await cached(ctx, key, TTL.ranked, () => loadPlayerRanked(ctx.env, shard, id, season)), 120);
+    },
+  ],
+
+  // GET /api/player/:id/weapons
+  [
+    /^\/api\/player\/([^/]+)\/weapons$/,
+    async (ctx, url, [id]) => {
+      const shard = getShard(url, ctx.env);
+      check(id, RE_ACCOUNT, "Player id");
+      const key = `weapons:v2:${shard}:${id}`;
+      return json(await cached(ctx, key, TTL.weapons, () => loadWeaponMastery(ctx.env, shard, id)), 600);
     },
   ],
 
