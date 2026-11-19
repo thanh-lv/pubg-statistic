@@ -1,6 +1,6 @@
 import type { MatchSummary } from "@shared/types";
 import { Bot, Crosshair, Loader2, Pause, Play, Skull, User, Zap } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTelemetry } from "@/hooks/useTelemetry";
 import { PLAYER_COLORS } from "@/lib/constants";
 import { fmtInt, fmtPct } from "@/lib/format";
@@ -191,7 +191,14 @@ function Replay({
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(30);
   const [filter, setFilter] = useState<Filter>("all");
-  const [showOpponents, setShowOpponents] = useState(true);
+  const [showHumans, setShowHumans] = useState(true);
+  const [showBots, setShowBots] = useState(true);
+  const opponentCount = useMemo(() => {
+    let humans = 0;
+    let bots = 0;
+    for (const a of analysis.actors) if (!a.isTeam) a.isBot ? bots++ : humans++;
+    return { humans, bots };
+  }, [analysis]);
   const [showShots, setShowShots] = useState(true);
   const raf = useRef(0);
 
@@ -231,7 +238,8 @@ function Replay({
           colors={colors}
           time={time}
           focusId={focusId}
-          showOpponents={showOpponents}
+          showHumans={showHumans}
+          showBots={showBots}
           showShots={showShots}
           // ~0.5s thực tế dù phát nhanh hay chậm
           hitWindow={Math.max(2, speed * 0.5)}
@@ -279,7 +287,10 @@ function Replay({
             </li>
           ))}
           <li className="flex items-center gap-1.5">
-            <span className="inline-block size-2.5 rounded-full border border-black" style={{ background: MAP_COLORS.opponent }} /> Đối thủ
+            <span className="inline-block size-2.5 rounded-full border border-black" style={{ background: MAP_COLORS.opponent }} /> Đối thủ (người)
+          </li>
+          <li className="flex items-center gap-1.5">
+            <Bot className="size-3.5" style={{ color: MAP_COLORS.opponent }} /> Đối thủ (bot)
           </li>
           <li className="flex items-center gap-1.5">
             <span className="font-bold" style={{ color: MAP_COLORS.human }}>✕</span> Kill người
@@ -308,7 +319,24 @@ function Replay({
         </ul>
 
         <div className="flex flex-wrap gap-2">
-          <Toggle checked={showOpponents} onChange={setShowOpponents} label="Hiện đối thủ" />
+          <Toggle
+            checked={showHumans}
+            onChange={setShowHumans}
+            label={
+              <>
+                <User className="size-3.5" /> Người chơi · {opponentCount.humans}
+              </>
+            }
+          />
+          <Toggle
+            checked={showBots}
+            onChange={setShowBots}
+            label={
+              <>
+                <Bot className="size-3.5" /> Bot · {opponentCount.bots}
+              </>
+            }
+          />
           <Toggle checked={showShots} onChange={setShowShots} label="Đường đạn & vòng mất máu" />
         </div>
       </div>
@@ -346,7 +374,7 @@ function Replay({
   );
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode }) {
   return (
     <button
       type="button"

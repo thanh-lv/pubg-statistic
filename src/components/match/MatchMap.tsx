@@ -13,7 +13,7 @@ const TILE_THRESHOLD = 700;
 export const MAP_COLORS = {
   human: "#f87171",
   bot: "#9aa1b2",
-  /** Mọi đối thủ (người & bot) dùng chung 1 màu */
+  /** Đối thủ (người & bot) dùng chung 1 màu, phân biệt bằng hình: chấm tròn = người, người máy = bot */
   opponent: "#e2e8f0",
   hitRing: "#ef4444",
 };
@@ -84,7 +84,8 @@ export function MatchMap({
   colors,
   time,
   focusId,
-  showOpponents = true,
+  showHumans = true,
+  showBots = true,
   showShots = true,
   hitWindow = 2,
 }: {
@@ -93,7 +94,10 @@ export function MatchMap({
   colors: Record<string, string>;
   time: number;
   focusId?: string | null;
-  showOpponents?: boolean;
+  /** Hiện đối thủ là người chơi */
+  showHumans?: boolean;
+  /** Hiện đối thủ là bot */
+  showBots?: boolean;
   showShots?: boolean;
   /** Đường đạn / vòng đỏ hiển thị trong bao nhiêu giây (theo thời gian trận) */
   hitWindow?: number;
@@ -241,8 +245,8 @@ export function MatchMap({
           {/* Kill & knock của đội */}
           {events.map((e, i) => (e.pos ? <EventMark key={i} e={e} s={s} /> : null))}
 
-          {/* Đối thủ: cùng 1 màu */}
-          {showOpponents && opponents.map((a) => <OpponentDot key={a.id} a={a} time={time} s={s} />)}
+          {/* Đối thủ: người = chấm tròn, bot = người máy */}
+          {opponents.map((a) => ((a.isBot ? showBots : showHumans) ? <OpponentDot key={a.id} a={a} time={time} s={s} /> : null))}
 
           {/* Đường đạn: người bắn → người trúng, mờ dần */}
           {recentHits.map((h, i) => {
@@ -369,10 +373,27 @@ function OpponentDot({ a, time, s }: { a: Actor; time: number; s: number }) {
   }
   const p = posAt(a.track, time);
   if (!p) return null;
+  if (a.isBot) return <BotGlyph x={p.x * W} y={p.y * W} s={s} title={`${a.name} (bot)`} />;
   return (
     <circle cx={p.x * W} cy={p.y * W} r={4.5 * s} fill={MAP_COLORS.opponent} stroke="#0a0c10" strokeWidth={1.4 * s} opacity={0.92}>
-      <title>{`${a.name}${a.isBot ? " (bot)" : ""}`}</title>
+      <title>{a.name}</title>
     </circle>
+  );
+}
+
+/** Hình người máy (đầu + ăng-ten + 2 mắt), tâm tại (x, y), kích thước không đổi trên màn hình */
+function BotGlyph({ x, y, s, title }: { x: number; y: number; s: number; title: string }) {
+  const dark = "#0a0c10";
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`} opacity={0.95}>
+      <title>{title}</title>
+      <line x1={0} y1={-4} x2={0} y2={-7} stroke={dark} strokeWidth={3} strokeLinecap="round" />
+      <line x1={0} y1={-4} x2={0} y2={-7} stroke={MAP_COLORS.opponent} strokeWidth={1.3} strokeLinecap="round" />
+      <circle cx={0} cy={-7.6} r={1.6} fill={MAP_COLORS.opponent} stroke={dark} strokeWidth={0.9} />
+      <rect x={-6} y={-4} width={12} height={9} rx={2.2} fill={MAP_COLORS.opponent} stroke={dark} strokeWidth={1.3} />
+      <circle cx={-2.4} cy={0.4} r={1.3} fill={dark} />
+      <circle cx={2.4} cy={0.4} r={1.3} fill={dark} />
+    </g>
   );
 }
 
