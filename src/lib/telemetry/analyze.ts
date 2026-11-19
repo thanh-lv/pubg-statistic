@@ -1,6 +1,7 @@
 import damageCauserName from "@/data/damageCauserName.json";
 import damageTypeCategory from "@/data/damageTypeCategory.json";
 import { mapSizeOf } from "../maps";
+import { computeInsights } from "./insights";
 import type { Actor, Circle, Count, FeedEvent, Hit, MemberAnalysis, Pt, TelemetryAnalysis, ZoneState } from "./types";
 
 /* Kiểu tối giản của các sự kiện telemetry cần dùng */
@@ -13,6 +14,8 @@ interface Character {
   teamId: number;
   accountId: string;
   location?: Loc;
+  /** "user" | "user_ai" | "monster" (NPC sự kiện, vd ChickenMan) */
+  type?: string;
 }
 interface DamageInfo {
   damageReason?: string;
@@ -64,7 +67,18 @@ export function analyzeTelemetry(
     let m = byId.get(c.accountId);
     if (!m) {
       const zero = (): Count => ({ human: 0, bot: 0 });
-      m = { id: c.accountId, name: c.name, kills: zero(), knocks: zero(), damage: zero(), death: null, landing: null, path: [] };
+      m = {
+        id: c.accountId,
+        name: c.name,
+        kills: zero(),
+        knocks: zero(),
+        damage: zero(),
+        death: null,
+        deaths: [],
+        landing: null,
+        landings: [],
+        paths: [],
+      };
       byId.set(c.accountId, m);
     }
     return m;
@@ -75,6 +89,7 @@ export function analyzeTelemetry(
   const feed: FeedEvent[] = [];
   const zones: ZoneState[] = [];
   const rawPaths = new Map<string, Pt[]>();
+  const allLandings = new Map<string, Pt[]>();
   const actors = new Map<string, Actor>();
   const hits: Hit[] = [];
   let duration = 0;
@@ -82,7 +97,16 @@ export function analyzeTelemetry(
   const actorOf = (c: Character) => {
     let a = actors.get(c.accountId);
     if (!a) {
-      a = { id: c.accountId, name: c.name, teamId: c.teamId, isBot: isBotId(c.accountId), isTeam: members.has(c.accountId), track: [], deathT: null };
+      a = {
+        id: c.accountId,
+        name: c.name,
+        teamId: c.teamId,
+        isBot: isBotId(c.accountId),
+        isTeam: members.has(c.accountId),
+        track: [],
+        deaths: [],
+        deathT: null,
+      };
       actors.set(c.accountId, a);
     }
     return a;
@@ -96,15 +120,27 @@ export function analyzeTelemetry(
       case "LogParachuteLanding": {
         const c = e.character as Character | undefined;
         if (c && members.has(c.accountId) && c.location) {
-          const p = norm(c.location)!;
-          ensure(c).landing ??= { t, ...p };
+          const p = { t, ...norm(c.location)! };
+          ensure(c).landing ??= p;
+          // Còn tiếp đất giữa trận khi dùng điểm gọi cứu hộ (EmergencyPickup)… → lọc lại sau vòng lặp
+          const list = allLandings.get(c.accountId) ?? [];
+          list.push(p);
+          allLandings.set(c.accountId, list);
         }
+        break;
+      }
+
+      case "LogPlayerCreate": {
+        // Được hồi sinh (recall): đóng lần chết đang mở
+        const c = e.character as Character | undefined;
+        const last = c?.accountId ? actors.get(c.accountId)?.deaths.at(-1) : undefined;
+        if (last && last[1] == null) last[1] = t;
         break;
       }
 
       case "LogPlayerPosition": {
         const c = e.character as Character | undefined;
-        if (c?.location && c.accountId) {
+        if (c?.location && c.accountId && c.type !== "monster") {
           const p = norm(c.location)!;
           actorOf(c).track.push(Math.round(t * 10) / 10, p.x, p.y);
         }
@@ -122,7 +158,7 @@ export function analyzeTelemetry(
         const v = e.victim as Character | null;
         const dmg = Number(e.damage) || 0;
         // Đường đạn: mọi phát trúng có người bắn (bỏ tự gây sát thương, bo, ngã…)
-        if (a?.location && v?.location && a.accountId && a.accountId !== v.accountId && dmg > 0) {
+        if (a?.location && v?.location && a.accountId && a.accountId !== v.accountId && dmg > 0 && a.type !== "monster" && v.type !== "monster") {
           const pa = norm(a.location)!;
           const pv = norm(v.location)!;
           actorOf(a);
@@ -166,8 +202,11 @@ export function analyzeTelemetry(
           e._T === "LogPlayerKillV2"
             ? (e.killerDamageInfo ?? e.finishDamageInfo ?? e.dBNODamageInfo ?? {})
             : { damageCauserName: e.damageCauserName, damageTypeCategory: e.damageTypeCategory, damageReason: e.damageReason, distance: e.distance };
-        if (!v) break;
-        if (v.accountId) actorOf(v).deathT ??= t;
+        if (!v?.accountId) break;
+        // Bỏ sự kiện chết trùng khi đang chết sẵn
+        const deaths = actorOf(v).deaths;
+        const fresh = !(deaths.length && deaths.at(-1)![1] == null);
+        if (fresh) deaths.push([t, null]);
 
         // Thành viên đội kill được đối thủ
         if (killer && members.has(killer.accountId) && killer.teamId !== v.teamId && !e.isSuicide) {
@@ -189,7 +228,7 @@ export function analyzeTelemetry(
         }
 
         // Thành viên đội bị hạ
-        if (members.has(v.accountId)) {
+        if (fresh && members.has(v.accountId)) {
           const m = ensure(v);
           const envCause = ENV_DEATH[info.damageTypeCategory ?? ""];
           const byEnemy = killer && killer.accountId !== v.accountId;
@@ -206,7 +245,7 @@ export function analyzeTelemetry(
             headshot: info.damageReason === "HeadShot",
             pos: norm(v.location),
           };
-          m.death ??= ev;
+          m.deaths.push(ev);
           feed.push(ev);
         }
         break;
@@ -226,17 +265,45 @@ export function analyzeTelemetry(
     }
   }
 
-  // Đường đi: bắt đầu từ lúc tiếp đất (bỏ đoạn trên máy bay / dù)
+  // Lần chết cuối (không được hồi sinh)
+  for (const a of actors.values()) {
+    const last = a.deaths.at(-1);
+    a.deathT = last && last[1] == null ? last[0] : null;
+  }
+  for (const m of byId.values()) {
+    const act = actors.get(m.id);
+    const final = act?.deathT ?? null;
+    m.death = final == null ? null : (m.deaths.find((d) => d.t === final) ?? null);
+    // Mỗi "mạng" bắt đầu lúc vào trận hoặc lúc được hồi sinh → lấy lần tiếp đất đầu tiên sau đó
+    const lifeStarts = [-Infinity, ...(act?.deaths ?? []).flatMap(([, back]) => (back == null ? [] : [back]))];
+    const all = allLandings.get(m.id) ?? [];
+    m.landings = [...new Set(lifeStarts.map((s) => all.find((l) => l.t >= s)).filter((l): l is Pt => !!l))];
+  }
+
+  // Đường đi: mỗi "mạng" từ lúc tiếp đất tới lúc chết (bỏ đoạn máy bay / dù và đoạn chờ hồi sinh)
   for (const [id, pts] of rawPaths) {
     const m = byId.get(id)!;
-    const from = m.landing?.t ?? 0;
-    const after = pts.filter((p) => p.t >= from);
-    const end = m.death?.t ?? Infinity;
-    m.path = [...(m.landing ? [m.landing] : []), ...after.filter((p) => p.t <= end)];
-    if (m.death?.pos) m.path.push({ t: m.death.t, ...m.death.pos });
+    const starts: Pt[] = m.landings.length ? m.landings : pts.length ? [pts[0]] : [];
+    m.paths = starts.map((start) => {
+      const death = m.deaths.find((d) => d.t > start.t);
+      const end = death?.t ?? Infinity;
+      const seg = [start, ...pts.filter((p) => p.t > start.t && p.t <= end)];
+      if (death?.pos) seg.push({ t: death.t, ...death.pos });
+      return seg;
+    });
   }
 
   const ordered = memberIds.map((id) => byId.get(id)).filter((m): m is MemberAnalysis => !!m);
+  const insights = computeInsights({
+    events,
+    tOf,
+    members: ordered,
+    actors,
+    size,
+    duration,
+    envName: (c) => ENV_DEATH[c ?? ""] ?? "Không rõ",
+    zones,
+  });
   return {
     duration,
     members: ordered,
@@ -244,5 +311,6 @@ export function analyzeTelemetry(
     zones,
     actors: [...actors.values()],
     hits: hits.sort((a, b) => a.t - b.t),
+    insights,
   };
 }

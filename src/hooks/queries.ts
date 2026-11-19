@@ -69,7 +69,7 @@ export function usePlayerRanked(id: string | undefined, season: string | undefin
   });
 }
 
-const matchQuery = (id: string, shard: string) => ({
+export const matchQuery = (id: string, shard: string) => ({
   queryKey: ["match", shard, id],
   queryFn: () => api.match(id, shard),
   staleTime: Infinity,

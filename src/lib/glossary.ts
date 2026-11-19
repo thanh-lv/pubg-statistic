@@ -140,6 +140,86 @@ export const GLOSSARY = {
     formula: "Số trận chết ≤ 3 phút sau khi đáp ÷ số trận đã đáp",
   },
   place: { title: "Thứ hạng trận", desc: "#1 là thắng. Số sau dấu / là tổng số đội trong trận." },
+  trade: {
+    title: "Trả đòn (trade)",
+    desc: "Khi 1 thành viên bị địch knock/giết mà vẫn còn đồng đội đứng được, đội có knock hoặc giết lại 1 người của chính đội địch đó trong vòng 10 giây không. Thấp nghĩa là đang bị bắt lẻ từng người.",
+    formula: "Số lần trả đòn ÷ số lần bị địch hạ khi còn đồng đội đứng",
+    example: "Bị hạ 4 lần, 2 lần đồng đội hạ lại địch ngay → 50%",
+  },
+  reviveRate: {
+    title: "Tỉ lệ được cứu",
+    desc: "Trong các lần bị knock, bao nhiêu lần được đồng đội cứu dậy thay vì bị kết liễu / chảy máu chết. Phản ánh khả năng giữ khu vực và dùng smoke để cứu.",
+    formula: "Số lần được cứu ÷ số lần bị knock (đã rõ kết cục)",
+  },
+  mateDistance: {
+    title: "Đồng đội gần nhất lúc bị hạ",
+    desc: "Khoảng cách từ người bị địch hạ tới đồng đội còn đứng gần nhất, lấy trung vị. Xa quá thì không ai kịp cứu hay bắn hỗ trợ.",
+    example: "≤ 25 m: sát cánh · 25–60 m: tạm ổn · > 60 m: quá xa",
+  },
+  teamSpread: {
+    title: "Độ tản đội",
+    desc: "Khoảng cách trung bình từ mỗi thành viên tới đồng đội gần nhất, lấy mẫu mỗi 10 giây sau khi cả đội tiếp đất. Kèm % thời gian có người cách đồng đội hơn 150 m (đi lẻ).",
+  },
+  thirdParty: {
+    title: "Bên thứ ba",
+    desc: "Bị 1 đội đánh vào trong lúc vừa đọ súng với 1 đội khác (trong vòng 20 giây). Hay bị bên thứ ba nghĩa là giao tranh kéo dài quá lâu hoặc đánh ở chỗ trống trải.",
+  },
+  fightWin: {
+    title: "Thắng giao tranh",
+    desc: "Mỗi trận đánh = chuỗi trao đổi sát thương / knock giữa đội bạn và 1 đội địch, cách nhau không quá 30 giây. Thắng khi hạ được nhiều người hơn số người bị mất. Chỉ tính trận có người bị hạ, tách riêng đội người thật và đội bot.",
+    formula: "Trận thắng ÷ trận có người bị hạ",
+  },
+  firstHit: {
+    title: "Bắn trước",
+    desc: "Trong các trận đánh với đội người thật, bên nào gây sát thương trước. Đội bắn trước thường thắng — chỉ số này phản ánh quan sát, chọn góc và giữ im lặng.",
+    example: "Thắng 8/8 khi bắn trước nhưng 2/7 khi bị bắn trước → nên chủ động phát hiện địch sớm hơn",
+  },
+  dmgRatio: {
+    title: "Sát thương gây / nhận",
+    desc: "Tổng sát thương đội gây cho đội người thật chia cho sát thương nhận từ họ. ADR chỉ nhìn 1 chiều; tỉ lệ dưới 1 nghĩa là đang thua đọ súng.",
+    formula: "Gây ÷ Nhận (chỉ tính đối thủ là người)",
+  },
+  knockConvert: {
+    title: "Knock → kill",
+    desc: "Trong các lần đội bạn knock được địch, bao nhiêu lần địch bị kết liễu thay vì được đồng đội họ cứu dậy.",
+    formula: "Bị kết liễu ÷ (bị kết liễu + được cứu)",
+  },
+  rangeSplit: {
+    title: "Theo tầm bắn",
+    desc: "Sát thương gây/nhận và số knock chia theo khoảng cách giữa người bắn và người trúng. Cho biết đội mạnh/yếu ở tầm nào để chọn súng và cách áp sát.",
+  },
+  zoneEntry: {
+    title: "Vào bo",
+    desc: "Mỗi vòng bo: lúc vòng trắng (vùng an toàn kế tiếp) xuất hiện, mỗi thành viên vào được bên trong vòng trắng sớm hơn lúc bo xanh khép tới bao nhiêu giây. Số âm = vào sau khi bo đã khép (chạy bo, mất máu).",
+    formula: "Lúc bo khép − lúc lần đầu đứng trong vòng trắng",
+    example: "+60s: vào sớm 1 phút · +10s: sát giờ · −30s: chạy bo 30 giây",
+  },
+  blueDamage: {
+    title: "Sát thương bo",
+    desc: "Máu mất do đứng ngoài bo xanh, trung bình mỗi thành viên. Cao nghĩa là xoay vị trí muộn hoặc bị kẹt ngoài bo.",
+  },
+  outsideTime: {
+    title: "Thời gian ngoài bo",
+    desc: "Tổng thời gian đứng trong vùng xanh (ngoài vùng an toàn), trung bình mỗi thành viên. Lấy mẫu mỗi 10 giây.",
+  },
+  vehicleTime: {
+    title: "Đi xe",
+    desc: "Thời gian ngồi xe (không tính máy bay), trung bình mỗi thành viên, kèm số lần bị hạ khi đang trên xe.",
+  },
+  lootSpeed: {
+    title: "Tốc độ loot",
+    desc: "Số giây từ lúc tiếp đất tới lúc có súng chính, giáp cấp 2+ và mũ cấp 2+ (trung vị các thành viên). Loot chậm ở điểm nhảy đông người thường dẫn tới chết sớm — cân nhắc đổi điểm nhảy.",
+    example: "Súng ≤ 15s, giáp/mũ cấp 2 ≤ 1 phút là nhanh",
+  },
+  utility: {
+    title: "Vật phẩm ném",
+    desc: "Số lựu đạn, smoke, molotov, flash đã dùng và sát thương gây bằng chúng. Đội mạnh dùng lựu đạn để ép địch ra khỏi chỗ nấp và smoke để che khi cứu / di chuyển.",
+  },
+  smokeRevive: {
+    title: "Cứu có smoke",
+    desc: "Trong các lần cứu đồng đội, bao nhiêu lần có thành viên thả smoke trong vòng 20 giây trước khi cứu xong.",
+    formula: "Lần cứu có smoke ÷ tổng lần cứu",
+  },
 } satisfies Record<string, Term>;
 
 export type TermKey = keyof typeof GLOSSARY;
@@ -152,4 +232,8 @@ export const GLOSSARY_GROUPS: { title: string; keys: TermKey[] }[] = [
   { title: "Vũ khí", keys: ["weaponMastery", "weaponLevel", "weaponKnocks", "weaponLongest", "weaponStyle"] },
   { title: "Chơi chung & nhảy dù", keys: ["together", "lineup", "hotDrop", "earlyDeath"] },
   { title: "Rank & chế độ", keys: ["rp", "tier", "avgRank", "tppFpp", "place"] },
+  { title: "Phối hợp đội (telemetry)", keys: ["trade", "reviveRate", "mateDistance", "teamSpread", "thirdParty"] },
+  { title: "Giao tranh (telemetry)", keys: ["fightWin", "firstHit", "dmgRatio", "knockConvert", "rangeSplit"] },
+  { title: "Bo & di chuyển (telemetry)", keys: ["zoneEntry", "blueDamage", "outsideTime", "vehicleTime"] },
+  { title: "Loot & vật phẩm (telemetry)", keys: ["lootSpeed", "utility", "smokeRevive"] },
 ];

@@ -1,6 +1,7 @@
 import { Maximize2, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { MAP_2D, TILE_GRID } from "@/lib/maps";
+import { deadSince, posAt } from "@/lib/telemetry/track";
 import type { Actor, FeedEvent, Hit, TelemetryAnalysis, ZoneState } from "@/lib/telemetry/types";
 
 /** Toạ độ thế giới của SVG: bản đồ = 0..W */
@@ -30,7 +31,7 @@ const clampView = (v: View): View => {
 /** Khung nhìn ban đầu: vừa khít đường đi & sự kiện của đội */
 function fitView(a: TelemetryAnalysis): View {
   const pts: { x: number; y: number }[] = [];
-  a.members.forEach((m) => pts.push(...m.path));
+  a.members.forEach((m) => m.paths.forEach((seg) => pts.push(...seg)));
   a.events.forEach((e) => e.pos && pts.push(e.pos));
   if (!pts.length) return { x: 0, y: 0, w: W };
   const xs = pts.map((p) => p.x * W);
@@ -48,23 +49,6 @@ const lastBefore = <T extends { t: number }>(list: T[], t: number) => {
   }
   return found;
 };
-
-/** Vị trí nội suy trên vết [t,x,y,…] tại thời điểm t (null nếu chưa xuất hiện / mất dấu quá lâu) */
-function posAt(track: number[], t: number, staleAfter = 25): { x: number; y: number } | null {
-  const n = track.length / 3;
-  if (!n || t < track[0]) return null;
-  let lo = 0;
-  let hi = n - 1;
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1;
-    if (track[mid * 3] <= t) lo = mid;
-    else hi = mid - 1;
-  }
-  const i = lo * 3;
-  if (lo === n - 1) return t - track[i] > staleAfter ? null : { x: track[i + 1], y: track[i + 2] };
-  const k = (t - track[i]) / (track[i + 3] - track[i] || 1);
-  return { x: track[i + 1] + (track[i + 4] - track[i + 1]) * k, y: track[i + 2] + (track[i + 5] - track[i + 2]) * k };
-}
 
 /** Các phát trúng trong khoảng (t - win, t] */
 function hitsIn(hits: Hit[], t: number, win: number): Hit[] {
@@ -180,6 +164,11 @@ export function MatchMap({
     if (!a) return null;
     return posAt(a.track, deathT !== null ? Math.min(time, deathT) : time, Infinity);
   };
+  /** Thành viên đang chết tại thời điểm hiện tại → lúc chết của lần đó (đã tính hồi sinh) */
+  const memberDeadSince = (id: string) => {
+    const a = actorById.get(id);
+    return a ? deadSince(a.deaths, time) : null;
+  };
 
   return (
     <div className="relative">
@@ -225,36 +214,44 @@ export function MatchMap({
             <circle cx={zone.white.x * W} cy={zone.white.y * W} r={zone.white.r * W} fill="none" stroke="#fff" strokeWidth={2 * s} strokeDasharray={`${6 * s} ${4 * s}`} />
           )}
 
-          {/* Đường đi của đội */}
-          {analysis.members.map((m) => {
-            const pts = m.path.filter((p) => p.t <= time).map((p) => `${p.x * W},${p.y * W}`);
-            const now = teamPos(m.id, m.death?.t ?? null);
-            if (now && (!m.death || time < m.death.t)) pts.push(`${now.x * W},${now.y * W}`);
-            if (pts.length < 2) return null;
+          {/* Đường đi của đội: mỗi "mạng" 1 đường (hồi sinh thì bắt đầu đường mới từ chỗ tiếp đất) */}
+          {analysis.members.flatMap((m) => {
+            const alive = memberDeadSince(m.id) == null;
+            // Mạng hiện tại = đoạn bắt đầu gần nhất trước thời điểm đang xem
+            let current = -1;
+            m.paths.forEach((seg, k) => {
+              if (seg[0] && seg[0].t <= time) current = k;
+            });
             const focus = !focusId || focusId === m.id;
-            return (
-              <polyline
-                key={m.id}
-                points={pts.join(" ")}
-                fill="none"
-                stroke={colors[m.id]}
-                strokeWidth={(focus ? 3 : 2) * s}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                opacity={focus ? 0.95 : 0.6}
-              />
-            );
+            return m.paths.map((seg, k) => {
+              const pts = seg.filter((p) => p.t <= time).map((p) => `${p.x * W},${p.y * W}`);
+              const now = alive && k === current ? teamPos(m.id, null) : null;
+              if (now) pts.push(`${now.x * W},${now.y * W}`);
+              if (pts.length < 2) return null;
+              return (
+                <polyline
+                  key={`${m.id}-${k}`}
+                  points={pts.join(" ")}
+                  fill="none"
+                  stroke={colors[m.id]}
+                  strokeWidth={(focus ? 3 : 2) * s}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  opacity={focus ? 0.95 : 0.6}
+                />
+              );
+            });
           })}
 
-          {/* Điểm tiếp đất */}
-          {analysis.members.map(
-            (m) =>
-              m.landing &&
-              m.landing.t <= time && (
-                <circle key={`land-${m.id}`} cx={m.landing.x * W} cy={m.landing.y * W} r={5 * s} fill="none" stroke={colors[m.id]} strokeWidth={2 * s}>
-                  <title>{m.name} tiếp đất</title>
+          {/* Điểm tiếp đất (cả các lần nhảy lại sau khi hồi sinh) */}
+          {analysis.members.flatMap((m) =>
+            m.landings
+              .filter((l) => l.t <= time)
+              .map((l, k) => (
+                <circle key={`land-${m.id}-${k}`} cx={l.x * W} cy={l.y * W} r={5 * s} fill="none" stroke={colors[m.id]} strokeWidth={2 * s}>
+                  <title>{`${m.name} tiếp đất${k > 0 ? ` (sau hồi sinh lần ${k})` : ""}`}</title>
                 </circle>
-              ),
+              )),
           )}
 
           {/* Kill & knock của đội */}
@@ -305,15 +302,19 @@ export function MatchMap({
 
           {/* Vị trí hiện tại / nơi chết của đội */}
           {analysis.members.map((m) => {
-            const dead = !!m.death && m.death.t <= time;
-            const p = dead && m.death?.pos ? m.death.pos : teamPos(m.id, m.death?.t ?? null);
+            const diedAt = memberDeadSince(m.id);
+            const dead = diedAt != null;
+            const deathPos = dead ? m.deaths.find((d) => d.t === diedAt)?.pos : null;
+            // Chết nhưng sau đó được hồi sinh → đang chờ hồi sinh
+            const waiting = dead && actorById.get(m.id)?.deaths.some(([t, back]) => t === diedAt && back != null);
+            const p = deathPos ?? teamPos(m.id, diedAt);
             if (!p) return null;
             const cx = p.x * W;
             const cy = p.y * W;
             const showName = !focusId || focusId === m.id;
             return (
               <g key={`me-${m.id}`}>
-                <title>{`${m.name}${dead ? " (đã chết)" : ""}`}</title>
+                <title>{`${m.name}${waiting ? " (đã chết · chờ hồi sinh)" : dead ? " (đã chết)" : ""}`}</title>
                 {dead ? (
                   <g stroke="#fff" strokeWidth={2.2 * s} strokeLinecap="round">
                     <circle cx={cx} cy={cy} r={8 * s} fill="#0a0c10" stroke={colors[m.id]} />
@@ -414,11 +415,12 @@ function OpponentDot({
   const fade = state === "dim" ? 0.3 : 1;
   const title = `${a.name}${a.isBot ? " (bot)" : ""} · Đội ${num}`;
 
-  if (a.deathT !== null && time > a.deathT) {
-    // Đã chết: dấu ✕ mờ dần trong 10s (đội đang chọn thì giữ luôn để thấy nơi bị loại)
-    const age = time - a.deathT;
+  const diedAt = deadSince(a.deaths, time);
+  if (diedAt !== null) {
+    // Đang chết: dấu ✕ mờ dần trong 10s (đội đang chọn thì giữ tới khi hồi sinh / hết trận để thấy nơi bị loại)
+    const age = time - diedAt;
     if (!hl && age > 10) return null;
-    const p = posAt(a.track, a.deathT, Infinity);
+    const p = posAt(a.track, diedAt, Infinity);
     if (!p) return null;
     const r = 3.5 * s;
     return (

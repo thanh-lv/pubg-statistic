@@ -5,6 +5,7 @@ import { useTelemetry } from "@/hooks/useTelemetry";
 import { PLAYER_COLORS } from "@/lib/constants";
 import { fmtInt, fmtPct } from "@/lib/format";
 import type { Actor, Count, FeedEvent, MemberAnalysis } from "@/lib/telemetry/types";
+import { deadSince } from "@/lib/telemetry/track";
 import { cn } from "@/lib/utils";
 import { Avatar } from "../ui/Avatar";
 import { Segmented } from "../ui/Segmented";
@@ -12,6 +13,7 @@ import { Skeleton } from "../ui/Skeleton";
 import { ErrorState } from "../ui/States";
 import { InfoTip } from "../ui/Tip";
 import { MAP_COLORS, MatchMap } from "./MatchMap";
+import { TeamInsights } from "./TeamInsights";
 
 const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
 const SPEEDS = [10, 30, 60] as const;
@@ -74,6 +76,15 @@ function Body({ analysis, match, focusId }: { analysis: NonNullable<ReturnType<t
     const inRoster = new Set(match.participants.map((p) => p.playerId));
     return { ...analysis, actors: analysis.actors.filter((a) => a.isTeam || inRoster.has(a.id)) };
   }, [analysis, match]);
+  const teamLabels = useMemo(() => makeTeamLabels(replayAnalysis.actors), [replayAnalysis]);
+
+  // Bấm 1 tình huống ở "Phân tích đội" → tua bản đồ tới đó (n tăng để bấm lại cùng chỗ vẫn tua)
+  const [seek, setSeek] = useState<Seek | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const onSeek = (t: number, teamId: number | null) => {
+    setSeek((prev) => ({ t, teamId, n: (prev?.n ?? 0) + 1 }));
+    mapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="space-y-5 p-4 sm:p-5">
@@ -94,7 +105,11 @@ function Body({ analysis, match, focusId }: { analysis: NonNullable<ReturnType<t
         ))}
       </div>
 
-      <Replay analysis={replayAnalysis} match={match} colors={colors} focusId={focusId} />
+      <TeamInsights analysis={replayAnalysis} colors={colors} labels={teamLabels} onSeek={onSeek} />
+
+      <div ref={mapRef} className="scroll-mt-4">
+        <Replay analysis={replayAnalysis} match={match} colors={colors} focusId={focusId} teamLabels={teamLabels} seek={seek} />
+      </div>
     </div>
   );
 }
@@ -137,6 +152,8 @@ function CountRow({ label, c, format = fmtInt }: { label: string; c: Count; form
 
 function MemberCard({ m, color, focus }: { m: MemberAnalysis; color: string; focus: boolean }) {
   const d = m.death;
+  // Số lần chết rồi được hồi sinh lại
+  const recalls = m.deaths.length - (d ? 1 : 0);
   return (
     <div className={cn("rounded-xl border bg-white/[0.02] p-3.5", focus ? "border-accent/40" : "border-white/[0.06]")}>
       <div className="mb-3 flex items-center gap-2.5">
@@ -165,6 +182,11 @@ function MemberCard({ m, color, focus }: { m: MemberAnalysis; color: string; foc
         ) : (
           <span className="text-win">Sống sót tới cuối trận</span>
         )}
+        {recalls > 0 && (
+          <div className="mt-1 text-fg-subtle">
+            Được hồi sinh {recalls} lần (chết {m.deaths.length} lần trong trận)
+          </div>
+        )}
       </div>
     </div>
   );
@@ -181,17 +203,22 @@ const BotTag = ({ bot }: { bot: boolean }) =>
   );
 
 type Filter = "all" | "kill" | "knock" | "death";
+type Seek = { t: number; teamId: number | null; n: number };
 
 function Replay({
   analysis,
   match,
   colors,
   focusId,
+  teamLabels,
+  seek,
 }: {
   analysis: NonNullable<ReturnType<typeof useTelemetry>["data"]>;
   match: MatchSummary;
   colors: Record<string, string>;
   focusId: string | null;
+  teamLabels: Record<number, string>;
+  seek: Seek | null;
 }) {
   const end = Math.ceil(analysis.duration);
   const [time, setTime] = useState(end);
@@ -209,8 +236,15 @@ function Replay({
   const [showShots, setShowShots] = useState(true);
   const [showTeamNumbers, setShowTeamNumbers] = useState(true);
   const [highlightTeam, setHighlightTeam] = useState<number | null>(null);
-  const teamLabels = useMemo(() => makeTeamLabels(analysis.actors), [analysis]);
   const raf = useRef(0);
+
+  // Tua từ bên ngoài: lùi 3s để thấy diễn biến ngay trước đó
+  useEffect(() => {
+    if (!seek) return;
+    setPlaying(false);
+    setTime(Math.max(0, Math.min(end, seek.t - 3)));
+    if (seek.teamId != null) setHighlightTeam(seek.teamId);
+  }, [seek, end]);
 
   useEffect(() => {
     if (!playing) return;
@@ -480,9 +514,11 @@ function OpponentTeams({
       <div className="grid max-h-[36rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {teams.map((t) => {
           const sel = selected === t.id;
-          const alive = t.members.filter((a) => a.deathT === null || a.deathT > time).length;
+          const alive = t.members.filter((a) => deadSince(a.deaths, time) == null).length;
           const out = alive === 0;
-          const outAt = out ? Math.max(...t.members.map((a) => a.deathT ?? 0)) : null;
+          // Bị loại hẳn = mọi người đều đã chết lần cuối (không còn ai được hồi sinh sau đó)
+          const finalOut = t.members.every((a) => a.deathT != null && a.deathT <= time);
+          const outAt = out && finalOut ? Math.max(...t.members.map((a) => a.deathT!)) : null;
           return (
             <button
               key={t.id}
@@ -509,7 +545,7 @@ function OpponentTeams({
               </div>
               <ul className="space-y-0.5 text-xs">
                 {t.members.map((a) => {
-                  const dead = a.deathT !== null && a.deathT <= time;
+                  const dead = deadSince(a.deaths, time) != null;
                   return (
                     <li key={a.id} className={cn("flex items-center gap-1.5", dead ? "text-fg-subtle line-through" : "text-fg")}>
                       {a.isBot ? <Bot className="size-3 shrink-0 text-fg-muted" /> : <User className="size-3 shrink-0 text-loss" />}
@@ -519,7 +555,14 @@ function OpponentTeams({
                 })}
               </ul>
               <div className="num mt-2 border-t border-white/[0.05] pt-1.5 text-[11px] text-fg-muted">
-                {outAt != null ? <span className="text-loss">Bị loại {clock(outAt)}</span> : `Còn sống ${alive}/${t.members.length}`} · {t.kills} kill
+                {outAt != null ? (
+                  <span className="text-loss">Bị loại {clock(outAt)}</span>
+                ) : out ? (
+                  <span className="text-accent">Chờ hồi sinh</span>
+                ) : (
+                  `Còn sống ${alive}/${t.members.length}`
+                )}{" "}
+                · {t.kills} kill
               </div>
             </button>
           );

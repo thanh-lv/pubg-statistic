@@ -4,6 +4,7 @@ import { Filters } from "@/components/layout/Filters";
 import { Awards } from "@/components/squad/Awards";
 import { CompareBars } from "@/components/squad/CompareBars";
 import { LandingSpots } from "@/components/squad/LandingSpots";
+import { TeamInsightsHistory } from "@/components/squad/TeamInsightsHistory";
 import { Leaderboard } from "@/components/squad/Leaderboard";
 import { TogetherStats } from "@/components/squad/TogetherStats";
 import { WeaponCompare } from "@/components/squad/WeaponCompare";
@@ -100,6 +101,7 @@ export function SquadPage() {
             <CompareBars rows={rows} />
           </div>
           <TogetherStats rows={rows} players={found} />
+          <TeamInsightsHistory rows={rows} players={found} />
           <LandingSpots rows={rows} players={found} />
           <WeaponCompare rows={rows} />
           <Glossary />
