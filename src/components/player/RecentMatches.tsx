@@ -9,6 +9,7 @@ import { Label } from "../ui/Tip";
 import { Skeleton } from "../ui/Skeleton";
 import { BarSpark } from "../ui/Sparkline";
 import { EmptyState } from "../ui/States";
+import { DeathCauses } from "./DeathCauses";
 
 const PAGE = 10;
 
@@ -82,6 +83,8 @@ export function RecentMatches({ playerId, matchIds }: { playerId: string; matchI
           </div>
         </div>
       )}
+
+      <DeathCauses rows={mine} />
 
       <div className="space-y-2">
         {visible.map((id, i) => {

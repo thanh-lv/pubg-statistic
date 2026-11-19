@@ -2,6 +2,7 @@ import { ArrowLeft, Ban, Check, SearchX, UserPlus } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { SeasonPicker } from "@/components/layout/Filters";
 import { ModeStatsPanel } from "@/components/player/ModeStatsPanel";
+import { PlayerWeapons } from "@/components/player/PlayerWeapons";
 import { RankedCard } from "@/components/player/RankedCard";
 import { RecentMatches } from "@/components/player/RecentMatches";
 import { Avatar } from "@/components/ui/Avatar";
@@ -102,6 +103,8 @@ export function PlayerPage() {
           <ModeStatsPanel key={`${player.id}:${resolved}`} modes={seasonQ.data.data.modes} preferred={mode} />
         )}
       </section>
+
+      <PlayerWeapons key={`w:${player.id}`} player={player} />
 
       <RecentMatches key={player.id} playerId={player.id} matchIds={player.matchIds} />
 

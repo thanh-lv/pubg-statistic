@@ -93,3 +93,26 @@ export const LEADERBOARD_COLUMNS: MetricKey[] = [
 
 export const COMPARE_METRICS: MetricKey[] = ["kd", "avgDamage", "winRate", "top10Rate", "hsRate", "avgKills", "rounds", "wins"];
 
+
+/* ------------------------------ lối chơi (trang người chơi) ------------------------------ */
+
+const div = (a: number, b: number) => (b ? a / b : null);
+
+/** Chỉ số lối chơi tính thêm từ thống kê mùa (null = không đủ dữ liệu / không áp dụng) */
+export function playstyle(s: ModeStats, solo: boolean) {
+  const r = s.roundsPlayed;
+  const moved = s.walkDistance + s.rideDistance + s.swimDistance;
+  return {
+    winConversion: div(s.wins, s.top10s),
+    dmgPerKill: div(s.damageDealt, s.kills),
+    knockPerKill: solo ? null : div(s.dBNOs, s.kills),
+    killsPer10Min: div(s.kills, s.timeSurvived / 600),
+    healsPerRound: div(s.heals, r),
+    boostsPerRound: div(s.boosts, r),
+    revivesPerRound: solo ? null : div(s.revives, r),
+    weaponsPerRound: div(s.weaponsAcquired, r),
+    walkPerRound: div(s.walkDistance, r),
+    ridePct: div(s.rideDistance, moved),
+    roundsPerDay: div(r, s.days),
+  };
+}

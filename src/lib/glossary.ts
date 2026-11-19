@@ -206,6 +206,35 @@ export const GLOSSARY = {
     title: "Đi xe",
     desc: "Thời gian ngồi xe (không tính máy bay), trung bình mỗi thành viên, kèm số lần bị hạ khi đang trên xe.",
   },
+  winConversion: {
+    title: "Chốt gà",
+    desc: "Trong các trận vào được Top 10, bao nhiêu trận thắng luôn. Khác tỉ lệ thắng chung: phản ánh khả năng xử lý cuối trận (vị trí bo cuối, giao tranh đông người).",
+    formula: "Số gà ÷ số lần vào Top 10",
+    example: "20 lần Top 10, 5 gà → 25%",
+  },
+  dmgPerKill: {
+    title: "Sát thương mỗi kill",
+    desc: "Cần gây bao nhiêu sát thương cho mỗi kill. Khoảng 100–150 là kết liễu gọn; cao hơn nhiều nghĩa là bắn trúng nhiều nhưng hay để địch chạy thoát, được cứu, hoặc đồng đội ăn kill.",
+    formula: "Tổng sát thương ÷ số kill",
+  },
+  knockPerKill: {
+    title: "Knock / kill",
+    desc: "Số lần hạ gục so với số kill. Trên 1 nghĩa là knock nhiều hơn số kill tự ăn được (đồng đội kết liễu, địch được cứu, hoặc chảy máu chết). Không áp dụng cho Solo (không có knock).",
+    formula: "Số knock ÷ số kill",
+  },
+  killPace: {
+    title: "Kill / 10 phút sống",
+    desc: "Số kill trên mỗi 10 phút còn sống — đo nhịp độ giao tranh. Cao: lối chơi chủ động, hổ báo. Thấp: chơi an toàn, ít giao tranh.",
+    formula: "Kill ÷ (tổng thời gian sống ÷ 10 phút)",
+  },
+  ridePct: {
+    title: "Tỉ lệ đi xe",
+    desc: "Phần trăm quãng đường di chuyển bằng xe so với tổng đi bộ + đi xe + bơi.",
+  },
+  deathCause: {
+    title: "Nguyên nhân chết",
+    desc: "Theo kết quả PUBG ghi cho mỗi trận: bị người chơi/bot hạ, chết vì bo, tự sát (ngã, tai nạn xe, lựu đạn của mình…) hoặc thoát trận. Kèm thời điểm chết tính từ đầu trận. Muốn biết bị người hay bot hạ thì xem trang chi tiết trận (telemetry).",
+  },
   lootSpeed: {
     title: "Tốc độ loot",
     desc: "Số giây từ lúc tiếp đất tới lúc có súng chính, giáp cấp 2+ và mũ cấp 2+ (trung vị các thành viên). Loot chậm ở điểm nhảy đông người thường dẫn tới chết sớm — cân nhắc đổi điểm nhảy.",
@@ -236,4 +265,5 @@ export const GLOSSARY_GROUPS: { title: string; keys: TermKey[] }[] = [
   { title: "Giao tranh (telemetry)", keys: ["fightWin", "firstHit", "dmgRatio", "knockConvert", "rangeSplit"] },
   { title: "Bo & di chuyển (telemetry)", keys: ["zoneEntry", "blueDamage", "outsideTime", "vehicleTime"] },
   { title: "Loot & vật phẩm (telemetry)", keys: ["lootSpeed", "utility", "smokeRevive"] },
+  { title: "Lối chơi", keys: ["winConversion", "dmgPerKill", "knockPerKill", "killPace", "ridePct", "deathCause"] },
 ];

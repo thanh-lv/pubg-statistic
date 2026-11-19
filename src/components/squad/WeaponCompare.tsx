@@ -28,7 +28,7 @@ const W_METRICS: Record<WMetric, { label: string; fmt: (n: number) => string; /*
 
 const PAGE = 10;
 
-interface PlayerWeaponsRow extends SquadRow {
+export interface PlayerWeaponsRow extends SquadRow {
   weapons: WeaponStat[] | undefined;
   byId: Map<string, WeaponStat>;
   loading: boolean;
@@ -96,7 +96,7 @@ export function WeaponCompare({ rows }: { rows: SquadRow[] }) {
 
 /* ------------------------------ thẻ "súng tủ" ------------------------------ */
 
-function SignatureCard({ p }: { p: PlayerWeaponsRow }) {
+export function SignatureCard({ p }: { p: PlayerWeaponsRow }) {
   const head = (
     <Link to={`/player/${encodeURIComponent(p.name)}`} className="group flex min-w-0 items-center gap-2">
       <Avatar name={p.name} size="sm" color={p.color} />
@@ -385,7 +385,7 @@ function WeaponTable({ players }: { players: PlayerWeaponsRow[] }) {
 
 /* ------------------------------ ảnh súng ------------------------------ */
 
-function WeaponIcon({ id, className }: { id: string; className?: string }) {
+export function WeaponIcon({ id, className }: { id: string; className?: string }) {
   const { icon, name } = weaponInfo(id);
   const [broken, setBroken] = useState(false);
   if (!icon || broken) return <Crosshair className="size-5 text-fg-subtle" aria-label={name} />;
