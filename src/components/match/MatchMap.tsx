@@ -16,6 +16,8 @@ export const MAP_COLORS = {
   /** Đối thủ (người & bot) dùng chung 1 màu, phân biệt bằng hình: chấm tròn = người, người máy = bot */
   opponent: "#e2e8f0",
   hitRing: "#ef4444",
+  /** Đội đối thủ đang được chọn */
+  teamHighlight: "#c084fc",
 };
 
 type View = { x: number; y: number; w: number };
@@ -86,6 +88,9 @@ export function MatchMap({
   focusId,
   showHumans = true,
   showBots = true,
+  showTeamNumbers = true,
+  teamLabels,
+  highlightTeam = null,
   showShots = true,
   hitWindow = 2,
 }: {
@@ -98,6 +103,12 @@ export function MatchMap({
   showHumans?: boolean;
   /** Hiện đối thủ là bot */
   showBots?: boolean;
+  /** Ghi số đội cạnh mỗi đối thủ */
+  showTeamNumbers?: boolean;
+  /** Nhãn hiển thị theo teamId (vd đội bot → "B1"); thiếu thì dùng chính teamId */
+  teamLabels?: Record<number, string>;
+  /** Đội đối thủ đang chọn: tô nổi bật (luôn hiện, kể cả khi bị lọc), các đội khác làm mờ */
+  highlightTeam?: number | null;
   showShots?: boolean;
   /** Đường đạn / vòng đỏ hiển thị trong bao nhiêu giây (theo thời gian trận) */
   hitWindow?: number;
@@ -109,7 +120,11 @@ export function MatchMap({
   const mapInfo = MAP_2D[mapName];
 
   const actorById = useMemo(() => new Map(analysis.actors.map((a) => [a.id, a])), [analysis]);
-  const opponents = useMemo(() => analysis.actors.filter((a) => !a.isTeam), [analysis]);
+  // Đội đang chọn vẽ sau cùng để nằm trên các đội khác
+  const opponents = useMemo(() => {
+    const list = analysis.actors.filter((a) => !a.isTeam);
+    return highlightTeam == null ? list : [...list.filter((a) => a.teamId !== highlightTeam), ...list.filter((a) => a.teamId === highlightTeam)];
+  }, [analysis, highlightTeam]);
 
   const zoomAt = useCallback((factor: number, fx = 0.5, fy = 0.5) => {
     setView((v) => {
@@ -245,14 +260,33 @@ export function MatchMap({
           {/* Kill & knock của đội */}
           {events.map((e, i) => (e.pos ? <EventMark key={i} e={e} s={s} /> : null))}
 
-          {/* Đối thủ: người = chấm tròn, bot = người máy */}
-          {opponents.map((a) => ((a.isBot ? showBots : showHumans) ? <OpponentDot key={a.id} a={a} time={time} s={s} /> : null))}
+          {/* Đối thủ: người = chấm tròn, bot = người máy, kèm số đội */}
+          {opponents.map((a) => {
+            const hl = highlightTeam === a.teamId;
+            if (!hl && !(a.isBot ? showBots : showHumans)) return null;
+            const state = highlightTeam == null ? "normal" : hl ? "highlight" : "dim";
+            return (
+              <OpponentDot
+                key={a.id}
+                a={a}
+                time={time}
+                s={s}
+                label={showTeamNumbers}
+                num={teamLabels?.[a.teamId] ?? String(a.teamId)}
+                state={state}
+              />
+            );
+          })}
 
           {/* Đường đạn: người bắn → người trúng, mờ dần */}
           {recentHits.map((h, i) => {
             const fade = 1 - (time - h.t) / hitWindow;
             const shooter = actorById.get(h.attackerId);
-            const color = shooter?.isTeam ? (colors[h.attackerId] ?? MAP_COLORS.opponent) : MAP_COLORS.opponent;
+            const color = shooter?.isTeam
+              ? (colors[h.attackerId] ?? MAP_COLORS.opponent)
+              : highlightTeam != null && shooter?.teamId === highlightTeam
+                ? MAP_COLORS.teamHighlight
+                : MAP_COLORS.opponent;
             return (
               <line
                 key={`shot-${i}`}
@@ -356,16 +390,40 @@ export function MatchMap({
   );
 }
 
-function OpponentDot({ a, time, s }: { a: Actor; time: number; s: number }) {
+const DARK = "#0a0c10";
+
+function OpponentDot({
+  a,
+  time,
+  s,
+  label,
+  num,
+  state,
+}: {
+  a: Actor;
+  time: number;
+  s: number;
+  /** Ghi số đội */
+  label: boolean;
+  /** Nhãn đội: "12" hoặc "B3" */
+  num: string;
+  state: "normal" | "highlight" | "dim";
+}) {
+  const hl = state === "highlight";
+  const color = hl ? MAP_COLORS.teamHighlight : MAP_COLORS.opponent;
+  const fade = state === "dim" ? 0.3 : 1;
+  const title = `${a.name}${a.isBot ? " (bot)" : ""} · Đội ${num}`;
+
   if (a.deathT !== null && time > a.deathT) {
-    // Vừa chết: dấu ✕ mờ dần trong 10s
+    // Đã chết: dấu ✕ mờ dần trong 10s (đội đang chọn thì giữ luôn để thấy nơi bị loại)
     const age = time - a.deathT;
-    if (age > 10) return null;
+    if (!hl && age > 10) return null;
     const p = posAt(a.track, a.deathT, Infinity);
     if (!p) return null;
     const r = 3.5 * s;
     return (
-      <g stroke={MAP_COLORS.opponent} strokeWidth={1.6 * s} opacity={0.8 * (1 - age / 10)}>
+      <g stroke={color} strokeWidth={1.6 * s} opacity={hl ? 0.9 : 0.8 * (1 - age / 10) * fade}>
+        <title>{`${title} (đã chết)`}</title>
         <line x1={p.x * W - r} y1={p.y * W - r} x2={p.x * W + r} y2={p.y * W + r} />
         <line x1={p.x * W + r} y1={p.y * W - r} x2={p.x * W - r} y2={p.y * W + r} />
       </g>
@@ -373,24 +431,69 @@ function OpponentDot({ a, time, s }: { a: Actor; time: number; s: number }) {
   }
   const p = posAt(a.track, time);
   if (!p) return null;
-  if (a.isBot) return <BotGlyph x={p.x * W} y={p.y * W} s={s} title={`${a.name} (bot)`} />;
+  const cx = p.x * W;
+  const cy = p.y * W;
+
+  if (a.isBot) {
+    return (
+      <g opacity={fade}>
+        <BotGlyph x={cx} y={cy} s={s} title={title} color={color} opacity={hl ? 1 : 0.7} />
+        {label && (
+          // Số đội bên phải icon bot
+          <text
+            x={cx + 6.5 * s}
+            y={cy}
+            dy="0.35em"
+            fontSize={8 * s}
+            fontWeight={800}
+            fill={color}
+            stroke={DARK}
+            strokeWidth={2.4 * s}
+            paintOrder="stroke"
+            opacity={hl ? 1 : 0.8}
+            style={{ fontFamily: "var(--font-sans)" }}
+          >
+            {num}
+          </text>
+        )}
+      </g>
+    );
+  }
   return (
-    <circle cx={p.x * W} cy={p.y * W} r={4.5 * s} fill={MAP_COLORS.opponent} stroke="#0a0c10" strokeWidth={1.4 * s} opacity={0.92}>
-      <title>{a.name}</title>
-    </circle>
+    // Người chơi: chấm to, đậm, có quầng sáng để nổi hơn bot; số đội nằm trong chấm
+    <g opacity={fade}>
+      <title>{title}</title>
+      <circle cx={cx} cy={cy} r={9.5 * s} fill={color} opacity={0.22} />
+      <circle cx={cx} cy={cy} r={6.5 * s} fill={color} stroke={DARK} strokeWidth={2 * s} />
+      {label && (
+        <text
+          x={cx}
+          y={cy}
+          dy="0.35em"
+          textAnchor="middle"
+          fontSize={(num.length > 2 ? 5.5 : 7.5) * s}
+          fontWeight={800}
+          fill={DARK}
+          style={{ fontFamily: "var(--font-sans)" }}
+        >
+          {num}
+        </text>
+      )}
+    </g>
   );
 }
 
-/** Hình người máy (đầu + ăng-ten + 2 mắt), tâm tại (x, y), kích thước không đổi trên màn hình */
-function BotGlyph({ x, y, s, title }: { x: number; y: number; s: number; title: string }) {
-  const dark = "#0a0c10";
+/** Hình người máy (đầu + ăng-ten + 2 mắt), tâm tại (x, y), kích thước không đổi trên màn hình.
+ *  Nhỏ & mờ hơn chấm người chơi để người chơi nổi bật hơn. */
+function BotGlyph({ x, y, s, title, color, opacity }: { x: number; y: number; s: number; title: string; color: string; opacity: number }) {
+  const dark = DARK;
   return (
-    <g transform={`translate(${x} ${y}) scale(${s})`} opacity={0.95}>
+    <g transform={`translate(${x} ${y}) scale(${s * 0.85})`} opacity={opacity}>
       <title>{title}</title>
       <line x1={0} y1={-4} x2={0} y2={-7} stroke={dark} strokeWidth={3} strokeLinecap="round" />
-      <line x1={0} y1={-4} x2={0} y2={-7} stroke={MAP_COLORS.opponent} strokeWidth={1.3} strokeLinecap="round" />
-      <circle cx={0} cy={-7.6} r={1.6} fill={MAP_COLORS.opponent} stroke={dark} strokeWidth={0.9} />
-      <rect x={-6} y={-4} width={12} height={9} rx={2.2} fill={MAP_COLORS.opponent} stroke={dark} strokeWidth={1.3} />
+      <line x1={0} y1={-4} x2={0} y2={-7} stroke={color} strokeWidth={1.3} strokeLinecap="round" />
+      <circle cx={0} cy={-7.6} r={1.6} fill={color} stroke={dark} strokeWidth={0.9} />
+      <rect x={-6} y={-4} width={12} height={9} rx={2.2} fill={color} stroke={dark} strokeWidth={1.3} />
       <circle cx={-2.4} cy={0.4} r={1.3} fill={dark} />
       <circle cx={2.4} cy={0.4} r={1.3} fill={dark} />
     </g>

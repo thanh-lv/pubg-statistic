@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTelemetry } from "@/hooks/useTelemetry";
 import { PLAYER_COLORS } from "@/lib/constants";
 import { fmtInt, fmtPct } from "@/lib/format";
-import type { Count, FeedEvent, MemberAnalysis } from "@/lib/telemetry/types";
+import type { Actor, Count, FeedEvent, MemberAnalysis } from "@/lib/telemetry/types";
 import { cn } from "@/lib/utils";
 import { Avatar } from "../ui/Avatar";
 import { Segmented } from "../ui/Segmented";
@@ -67,6 +67,13 @@ function Body({ analysis, match, focusId }: { analysis: NonNullable<ReturnType<t
     (acc, m) => ({ human: acc.human + m.kills.human, bot: acc.bot + m.kills.bot }),
     { human: 0, bot: 0 },
   );
+  // Chỉ giữ người có trong roster của trận: telemetry còn chứa NPC sự kiện (vd "ChickenMan",
+  // type "monster", teamId 600+) và người vào sảnh rồi thoát trước khi trận bắt đầu.
+  const replayAnalysis = useMemo(() => {
+    if (!match.participants.length) return analysis;
+    const inRoster = new Set(match.participants.map((p) => p.playerId));
+    return { ...analysis, actors: analysis.actors.filter((a) => a.isTeam || inRoster.has(a.id)) };
+  }, [analysis, match]);
 
   return (
     <div className="space-y-5 p-4 sm:p-5">
@@ -87,7 +94,7 @@ function Body({ analysis, match, focusId }: { analysis: NonNullable<ReturnType<t
         ))}
       </div>
 
-      <Replay analysis={analysis} match={match} colors={colors} focusId={focusId} />
+      <Replay analysis={replayAnalysis} match={match} colors={colors} focusId={focusId} />
     </div>
   );
 }
@@ -200,6 +207,9 @@ function Replay({
     return { humans, bots };
   }, [analysis]);
   const [showShots, setShowShots] = useState(true);
+  const [showTeamNumbers, setShowTeamNumbers] = useState(true);
+  const [highlightTeam, setHighlightTeam] = useState<number | null>(null);
+  const teamLabels = useMemo(() => makeTeamLabels(analysis.actors), [analysis]);
   const raf = useRef(0);
 
   useEffect(() => {
@@ -230,145 +240,290 @@ function Replay({
   const feed = analysis.events.filter((e) => filter === "all" || e.kind === filter);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-      <div className="space-y-3">
-        <MatchMap
-          mapName={match.mapName}
-          analysis={analysis}
-          colors={colors}
-          time={time}
-          focusId={focusId}
-          showHumans={showHumans}
-          showBots={showBots}
-          showShots={showShots}
-          // ~0.5s thực tế dù phát nhanh hay chậm
-          hitWindow={Math.max(2, speed * 0.5)}
-        />
-
-        <div className="flex items-center gap-3">
-          <button className="btn-primary size-9 shrink-0 p-0" onClick={togglePlay} aria-label={playing ? "Tạm dừng" : "Phát lại trận"}>
-            {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={end}
-            step={1}
-            value={Math.round(time)}
-            onChange={(e) => {
-              setPlaying(false);
-              setTime(Number(e.target.value));
-            }}
-            className="h-2 flex-1 cursor-pointer accent-[var(--color-accent)]"
-            aria-label="Thời gian trận"
+    <div className="space-y-5">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="space-y-3">
+          <MatchMap
+            mapName={match.mapName}
+            analysis={analysis}
+            colors={colors}
+            time={time}
+            focusId={focusId}
+            showHumans={showHumans}
+            showBots={showBots}
+            showTeamNumbers={showTeamNumbers}
+            highlightTeam={highlightTeam}
+            teamLabels={teamLabels}
+            showShots={showShots}
+            // ~0.5s thực tế dù phát nhanh hay chậm
+            hitWindow={Math.max(2, speed * 0.5)}
           />
-          <span className="num w-24 shrink-0 text-right text-sm text-fg-muted">
-            {clock(time)} / {clock(end)}
-          </span>
-          <select
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value) as (typeof SPEEDS)[number])}
-            className="rounded-lg border border-white/10 bg-ink-950 px-1.5 py-1 text-xs"
-            aria-label="Tốc độ phát"
-          >
-            {SPEEDS.map((s) => (
-              <option key={s} value={s}>
-                {s}x
-              </option>
+
+          <div className="flex items-center gap-3">
+            <button className="btn-primary size-9 shrink-0 p-0" onClick={togglePlay} aria-label={playing ? "Tạm dừng" : "Phát lại trận"}>
+              {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={end}
+              step={1}
+              value={Math.round(time)}
+              onChange={(e) => {
+                setPlaying(false);
+                setTime(Number(e.target.value));
+              }}
+              className="h-2 flex-1 cursor-pointer accent-[var(--color-accent)]"
+              aria-label="Thời gian trận"
+            />
+            <span className="num w-24 shrink-0 text-right text-sm text-fg-muted">
+              {clock(time)} / {clock(end)}
+            </span>
+            <select
+              value={speed}
+              onChange={(e) => setSpeed(Number(e.target.value) as (typeof SPEEDS)[number])}
+              className="rounded-lg border border-white/10 bg-ink-950 px-1.5 py-1 text-xs"
+              aria-label="Tốc độ phát"
+            >
+              {SPEEDS.map((s) => (
+                <option key={s} value={s}>
+                  {s}x
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-fg-muted">
+            {analysis.members.map((m) => (
+              <li key={m.id} className="flex items-center gap-1.5">
+                <span className="h-1 w-4 rounded-full" style={{ background: colors[m.id] }} />
+                {m.name}
+              </li>
             ))}
-          </select>
+            <li className="flex items-center gap-1.5">
+              <span
+                className="inline-block size-3 rounded-full border-2 border-black"
+                style={{ background: MAP_COLORS.opponent, boxShadow: `0 0 0 2px rgb(226 232 240 / 0.25)` }}
+              />{" "}
+              Đối thủ (người)
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Bot className="size-3.5 opacity-70" style={{ color: MAP_COLORS.opponent }} /> Đối thủ (bot)
+            </li>
+            {highlightTeam != null && (
+              <li className="flex items-center gap-1.5">
+                <span className="inline-block size-3 rounded-full border-2 border-black" style={{ background: MAP_COLORS.teamHighlight }} /> Đội{" "}
+                {teamLabels[highlightTeam] ?? highlightTeam} (đang chọn)
+              </li>
+            )}
+            <li className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: MAP_COLORS.human }}>✕</span> Kill người
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: MAP_COLORS.bot }}>✕</span> Kill bot
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span style={{ color: MAP_COLORS.human }}>◇</span> Knock
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: MAP_COLORS.opponent }} /> Đường đạn
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="inline-block size-3 rounded-full border-2" style={{ borderColor: MAP_COLORS.hitRing }} /> Đang mất máu
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="inline-block size-2.5 rounded-full border border-white" /> Tiếp đất
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="inline-block size-3 rounded-full border-2 border-dashed border-white/80" /> Vùng an toàn kế tiếp
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="inline-block size-3 rounded-full border-2 border-blue-500" /> Bo
+            </li>
+          </ul>
+
+          <div className="flex flex-wrap gap-2">
+            <Toggle
+              checked={showHumans}
+              onChange={setShowHumans}
+              label={
+                <>
+                  <User className="size-3.5" /> Người chơi · {opponentCount.humans}
+                </>
+              }
+            />
+            <Toggle
+              checked={showBots}
+              onChange={setShowBots}
+              label={
+                <>
+                  <Bot className="size-3.5" /> Bot · {opponentCount.bots}
+                </>
+              }
+            />
+            <Toggle checked={showTeamNumbers} onChange={setShowTeamNumbers} label="Số đội" />
+            <Toggle checked={showShots} onChange={setShowShots} label="Đường đạn & vòng mất máu" />
+          </div>
         </div>
 
-        <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-fg-muted">
-          {analysis.members.map((m) => (
-            <li key={m.id} className="flex items-center gap-1.5">
-              <span className="h-1 w-4 rounded-full" style={{ background: colors[m.id] }} />
-              {m.name}
-            </li>
-          ))}
-          <li className="flex items-center gap-1.5">
-            <span className="inline-block size-2.5 rounded-full border border-black" style={{ background: MAP_COLORS.opponent }} /> Đối thủ (người)
-          </li>
-          <li className="flex items-center gap-1.5">
-            <Bot className="size-3.5" style={{ color: MAP_COLORS.opponent }} /> Đối thủ (bot)
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="font-bold" style={{ color: MAP_COLORS.human }}>✕</span> Kill người
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="font-bold" style={{ color: MAP_COLORS.bot }}>✕</span> Kill bot
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span style={{ color: MAP_COLORS.human }}>◇</span> Knock
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: MAP_COLORS.opponent }} /> Đường đạn
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="inline-block size-3 rounded-full border-2" style={{ borderColor: MAP_COLORS.hitRing }} /> Đang mất máu
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="inline-block size-2.5 rounded-full border border-white" /> Tiếp đất
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="inline-block size-3 rounded-full border-2 border-dashed border-white/80" /> Vùng an toàn kế tiếp
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="inline-block size-3 rounded-full border-2 border-blue-500" /> Bo
-          </li>
-        </ul>
-
-        <div className="flex flex-wrap gap-2">
-          <Toggle
-            checked={showHumans}
-            onChange={setShowHumans}
-            label={
-              <>
-                <User className="size-3.5" /> Người chơi · {opponentCount.humans}
-              </>
-            }
+        <div className="flex min-h-0 flex-col lg:h-0 lg:min-h-full">
+          <Segmented<Filter>
+            size="sm"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "all", label: `Tất cả · ${analysis.events.length}` },
+              { value: "kill", label: "Kill" },
+              { value: "knock", label: "Knock" },
+              { value: "death", label: "Chết" },
+            ]}
           />
-          <Toggle
-            checked={showBots}
-            onChange={setShowBots}
-            label={
-              <>
-                <Bot className="size-3.5" /> Bot · {opponentCount.bots}
-              </>
-            }
-          />
-          <Toggle checked={showShots} onChange={setShowShots} label="Đường đạn & vòng mất máu" />
+          <ol className="mt-3 max-h-[28rem] min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 lg:max-h-none">
+            {feed.length === 0 && <li className="py-6 text-center text-sm text-fg-subtle">Không có sự kiện</li>}
+            {feed.map((e, i) => (
+              <FeedRow
+                key={i}
+                e={e}
+                color={colors[e.memberId]}
+                active={e.t <= time}
+                onClick={() => {
+                  setPlaying(false);
+                  setTime(Math.ceil(e.t));
+                }}
+              />
+            ))}
+          </ol>
+          <p className="mt-2 text-[11px] text-fg-subtle">Bấm vào một sự kiện để tua bản đồ tới thời điểm đó.</p>
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-col lg:h-0 lg:min-h-full">
-        <Segmented<Filter>
-          size="sm"
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { value: "all", label: `Tất cả · ${analysis.events.length}` },
-            { value: "kill", label: "Kill" },
-            { value: "knock", label: "Knock" },
-            { value: "death", label: "Chết" },
-          ]}
-        />
-        <ol className="mt-3 max-h-[28rem] min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 lg:max-h-none">
-          {feed.length === 0 && <li className="py-6 text-center text-sm text-fg-subtle">Không có sự kiện</li>}
-          {feed.map((e, i) => (
-            <FeedRow
-              key={i}
-              e={e}
-              color={colors[e.memberId]}
-              active={e.t <= time}
-              onClick={() => {
-                setPlaying(false);
-                setTime(Math.ceil(e.t));
-              }}
-            />
-          ))}
-        </ol>
-        <p className="mt-2 text-[11px] text-fg-subtle">Bấm vào một sự kiện để tua bản đồ tới thời điểm đó.</p>
+      <OpponentTeams
+        analysis={analysis}
+        match={match}
+        time={time}
+        labels={teamLabels}
+        selected={highlightTeam}
+        onSelect={setHighlightTeam}
+      />
+    </div>
+  );
+}
+
+/**
+ * Nhãn đội theo teamId. Đội có người chơi giữ nguyên teamId (trùng số trong game, 1..N);
+ * đội toàn bot (PUBG đặt teamId từ 200 trở lên) đánh số lại B1, B2… theo thứ tự teamId.
+ */
+function makeTeamLabels(actors: Actor[]): Record<number, string> {
+  const allBots = new Map<number, boolean>();
+  for (const a of actors) allBots.set(a.teamId, (allBots.get(a.teamId) ?? true) && a.isBot);
+  const labels: Record<number, string> = {};
+  let n = 0;
+  for (const [id, bots] of [...allBots].sort(([x], [y]) => x - y)) labels[id] = bots ? `B${++n}` : String(id);
+  return labels;
+}
+
+/** Các đội đối thủ, nhóm theo teamId (trùng số đội trong game). Bấm 1 đội để tô nổi bật trên bản đồ. */
+function OpponentTeams({
+  analysis,
+  match,
+  time,
+  labels,
+  selected,
+  onSelect,
+}: {
+  analysis: NonNullable<ReturnType<typeof useTelemetry>["data"]>;
+  match: MatchSummary;
+  time: number;
+  labels: Record<number, string>;
+  selected: number | null;
+  onSelect: (teamId: number | null) => void;
+}) {
+  const myTeamId = useMemo(() => analysis.actors.find((a) => a.isTeam)?.teamId ?? null, [analysis]);
+
+  const teams = useMemo(() => {
+    const byTeam = new Map<number, Actor[]>();
+    for (const a of analysis.actors) {
+      if (a.isTeam) continue;
+      const list = byTeam.get(a.teamId);
+      if (list) list.push(a);
+      else byTeam.set(a.teamId, [a]);
+    }
+    const rankOf = new Map(match.teams.map((t) => [t.teamId, t.rank]));
+    const killsOf = new Map(match.participants.map((p) => [p.playerId, p.kills]));
+    return [...byTeam]
+      .sort(([a], [b]) => a - b)
+      .map(([id, members]) => ({
+        id,
+        rank: rankOf.get(id) ?? null,
+        kills: members.reduce((n, a) => n + (killsOf.get(a.id) ?? 0), 0),
+        allBots: members.every((a) => a.isBot),
+        // Người thật trước, bot sau
+        members: members.sort((x, y) => Number(x.isBot) - Number(y.isBot) || x.name.localeCompare(y.name)),
+      }));
+  }, [analysis, match]);
+
+  if (!teams.length) return null;
+
+  return (
+    <div>
+      <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h3 className="font-semibold">Các đội khác · {teams.length}</h3>
+        {myTeamId != null && <span className="rounded bg-white/10 px-1.5 py-px text-xs text-fg-muted">Đội bạn: {myTeamId}</span>}
+        <span className="text-xs text-fg-subtle">Bấm vào một đội để làm nổi bật trên bản đồ.</span>
+        {selected != null && (
+          <button type="button" onClick={() => onSelect(null)} className="ml-auto text-xs font-medium text-accent hover:underline">
+            Bỏ chọn đội {labels[selected] ?? selected}
+          </button>
+        )}
+      </div>
+
+      <div className="grid max-h-[36rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        {teams.map((t) => {
+          const sel = selected === t.id;
+          const alive = t.members.filter((a) => a.deathT === null || a.deathT > time).length;
+          const out = alive === 0;
+          const outAt = out ? Math.max(...t.members.map((a) => a.deathT ?? 0)) : null;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={sel}
+              onClick={() => onSelect(sel ? null : t.id)}
+              className={cn(
+                "rounded-xl border p-3 text-left transition",
+                sel ? "bg-white/[0.06]" : "border-white/[0.06] bg-white/[0.02] hover:border-white/15",
+                out && !sel && "opacity-55",
+              )}
+              style={sel ? { borderColor: MAP_COLORS.teamHighlight } : undefined}
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <span
+                  className="num grid h-6 min-w-6 place-items-center rounded-md px-1 text-xs font-bold text-ink-950"
+                  style={{ background: sel ? MAP_COLORS.teamHighlight : MAP_COLORS.opponent }}
+                >
+                  {labels[t.id] ?? t.id}
+                </span>
+                <span className="text-sm font-semibold">Đội {labels[t.id] ?? t.id}</span>
+                {t.allBots && <BotTag bot />}
+                {t.rank != null && <span className="num ml-auto text-xs text-fg-subtle">Top {t.rank}</span>}
+              </div>
+              <ul className="space-y-0.5 text-xs">
+                {t.members.map((a) => {
+                  const dead = a.deathT !== null && a.deathT <= time;
+                  return (
+                    <li key={a.id} className={cn("flex items-center gap-1.5", dead ? "text-fg-subtle line-through" : "text-fg")}>
+                      {a.isBot ? <Bot className="size-3 shrink-0 text-fg-muted" /> : <User className="size-3 shrink-0 text-loss" />}
+                      <span className="truncate">{a.name}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="num mt-2 border-t border-white/[0.05] pt-1.5 text-[11px] text-fg-muted">
+                {outAt != null ? <span className="text-loss">Bị loại {clock(outAt)}</span> : `Còn sống ${alive}/${t.members.length}`} · {t.kills} kill
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
