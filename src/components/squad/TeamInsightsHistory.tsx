@@ -140,7 +140,7 @@ export function TeamInsightsHistory({ rows, players }: { rows: SquadRow[]; playe
   );
 }
 
-function RunBar({
+export function RunBar({
   loadingHistory,
   pending,
   progress,

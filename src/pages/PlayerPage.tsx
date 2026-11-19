@@ -2,6 +2,7 @@ import { ArrowLeft, Ban, Check, SearchX, UserPlus } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { SeasonPicker } from "@/components/layout/Filters";
 import { ModeStatsPanel } from "@/components/player/ModeStatsPanel";
+import { PlayerInsights } from "@/components/player/PlayerInsights";
 import { PlayerWeapons } from "@/components/player/PlayerWeapons";
 import { RankedCard } from "@/components/player/RankedCard";
 import { RecentMatches } from "@/components/player/RecentMatches";
@@ -105,6 +106,8 @@ export function PlayerPage() {
       </section>
 
       <PlayerWeapons key={`w:${player.id}`} player={player} />
+
+      <PlayerInsights key={`i:${player.id}`} player={player} />
 
       <RecentMatches key={player.id} playerId={player.id} matchIds={player.matchIds} />
 
