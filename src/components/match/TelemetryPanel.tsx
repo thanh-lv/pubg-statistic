@@ -302,7 +302,7 @@ function Replay({
             ))}
             <li className="flex items-center gap-1.5">
               <span
-                className="inline-block size-3 rounded-full border-2 border-black"
+                className="inline-block size-4 rounded-full border-2 border-black"
                 style={{ background: MAP_COLORS.opponent, boxShadow: `0 0 0 2px rgb(226 232 240 / 0.25)` }}
               />{" "}
               Đối thủ (người)
@@ -312,7 +312,7 @@ function Replay({
             </li>
             {highlightTeam != null && (
               <li className="flex items-center gap-1.5">
-                <span className="inline-block size-3 rounded-full border-2 border-black" style={{ background: MAP_COLORS.teamHighlight }} /> Đội{" "}
+                <span className="inline-block size-4 rounded-full border-2 border-black" style={{ background: MAP_COLORS.teamHighlight }} /> Đội{" "}
                 {teamLabels[highlightTeam] ?? highlightTeam} (đang chọn)
               </li>
             )}

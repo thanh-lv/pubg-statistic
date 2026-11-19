@@ -463,15 +463,15 @@ function OpponentDot({
     // Người chơi: chấm to, đậm, có quầng sáng để nổi hơn bot; số đội nằm trong chấm
     <g opacity={fade}>
       <title>{title}</title>
-      <circle cx={cx} cy={cy} r={9.5 * s} fill={color} opacity={0.22} />
-      <circle cx={cx} cy={cy} r={6.5 * s} fill={color} stroke={DARK} strokeWidth={2 * s} />
+      <circle cx={cx} cy={cy} r={12.5 * s} fill={color} opacity={0.22} />
+      <circle cx={cx} cy={cy} r={9 * s} fill={color} stroke={DARK} strokeWidth={2.2 * s} />
       {label && (
         <text
           x={cx}
           y={cy}
           dy="0.35em"
           textAnchor="middle"
-          fontSize={(num.length > 2 ? 5.5 : 7.5) * s}
+          fontSize={(num.length > 2 ? 7.5 : 10) * s}
           fontWeight={800}
           fill={DARK}
           style={{ fontFamily: "var(--font-sans)" }}
